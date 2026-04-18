@@ -59,7 +59,7 @@ interface SheetRow { email: string; plan: 'free' | 'plus' | 'pro'; expiry: strin
 async function fetchApprovedUsers(): Promise<SheetRow[]> {
   if (!SHEET_ID || !SHEET_API_KEY) {
     // DEV MODE: return a dummy approved user for testing
-    return [{ email: 'test@kattalai.dev', plan: 'pro', expiry: '2099-12-31' }];
+    return [{ email: 'sskabilan2004@gmail.com', plan: 'pro', expiry: '2099-12-31' }];
   }
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Sheet1?key=${SHEET_API_KEY}`;
   const res = await fetch(url);
