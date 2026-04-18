@@ -2,7 +2,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -10,7 +12,6 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -22,12 +23,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Build (minified + obfuscated)
         run: npm run build
         env:
-          # Secrets injected at build time — never visible in source or public repo
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_SHEET_ID: ${{ secrets.VITE_GOOGLE_SHEET_ID }}
           VITE_SHEETS_API_KEY: ${{ secrets.VITE_SHEETS_API_KEY }}
@@ -40,4 +40,3 @@ jobs:
           external_repository: NALIBAK/kattalai
           publish_branch: gh-pages
           publish_dir: ./dist
-          commit_message: "Deploy: ${{ github.sha }}"
