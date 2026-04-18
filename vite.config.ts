@@ -19,8 +19,16 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/kattalai/',
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          {
+            src: 'icon-192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
         ],
       },
       workbox: {
