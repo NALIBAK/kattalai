@@ -8,7 +8,6 @@ export function Navigation() {
     { path: '/', icon: '📊', label: 'Home' },
     { path: '/devotees', icon: '👥', label: 'Devotees' },
     { path: '/broadcast', icon: '📢', label: 'Broadcast' },
-    { path: '/print', icon: '🖨️', label: 'Print' },
     { path: '/cover-print', icon: '✉️', label: 'Covers' },
     { path: '/settings', icon: '⚙️', label: 'Settings' }
   ];

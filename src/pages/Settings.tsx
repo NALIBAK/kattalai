@@ -410,8 +410,15 @@ export function Settings() {
               <>
                 {hasPin() ? (
                   <div>
-                    <div className="flex gap-8 mb-4">
+                    <div className="flex-between mb-4">
                       <span className="badge badge-green">🔒 PIN Active</span>
+                      <button 
+                        className="btn btn-primary btn-sm" 
+                        onClick={() => { localStorage.removeItem('LAST_ACTIVE_KEY'); window.location.reload(); }}
+                        style={{ height: 32, padding: '0 12px' }}
+                      >
+                        🔐 Lock Session
+                      </button>
                     </div>
                     <div className="flex gap-8 mt-12">
                       <button className="btn btn-ghost flex-1" onClick={() => { setPinStep('change'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>

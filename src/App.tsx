@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore, useSettingsStore, useCategoryStore } from './store';
 import { getAuthCache } from './db';
 
@@ -11,7 +11,6 @@ import { DevoteeForm } from './pages/DevoteeForm';
 import { DevoteeDetail } from './pages/DevoteeDetail';
 import { DevoteePayments } from './pages/DevoteePayments';
 import { Broadcast } from './pages/Broadcast';
-import { PrintPage } from './pages/PrintPage';
 import { CoverPrint } from './pages/CoverPrint';
 import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
@@ -75,9 +74,7 @@ function App() {
               <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
               <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
               <Route path="/broadcast" element={<Broadcast />} />
-              <Route path="/print" element={<PrintPage />} />
               <Route path="/cover-print" element={<CoverPrint />} />
-              <Route path="/reports" element={<Navigate to="/print" replace />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/categories" element={<ManageCategories />} />
             </Route>

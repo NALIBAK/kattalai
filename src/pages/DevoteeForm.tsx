@@ -47,7 +47,7 @@ export function DevoteeForm() {
     phone3: '',
     pincode: '',
     address: '',
-    city: cities[0] || '',
+    city: '',
     gothram: '',
     category: categories[0]?.id || '',
     annual_amount: defaultAmount,
@@ -272,9 +272,7 @@ export function DevoteeForm() {
         <h4 className="mb-16 text-gold">2. Address & Location</h4>
         <div className="form-group">
           <label className="form-label">City</label>
-          <select className="form-input" value={formData.city} onChange={e => handleChange('city', e.target.value)}>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <input className="form-input" value={formData.city} onChange={e => handleChange('city', e.target.value)} placeholder="e.g. Chidambaram" />
         </div>
 
         {/* Pincode field */}

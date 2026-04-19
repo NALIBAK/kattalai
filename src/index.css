@@ -551,6 +551,13 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .grid-2       { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3       { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
+@media (max-width: 400px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .flex-between { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .flex-between > .btn { width: 100%; }
+}
+
 .p-16  { padding: 16px; }
 .pt-16 { padding-top: 16px; }
 .pb-16 { padding-bottom: 16px; }
