@@ -8,8 +8,8 @@ import { getDB, PaymentEntry, Devotee } from '../db';
  * It uses the 'drive.file' scope to only access files created by this app.
  */
 
-// REPLACE THIS WITH YOUR ACTUAL CLIENT ID FROM GOOGLE CLOUD CONSOLE
-export const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+// Use the Client ID from environment variables (set in .env file)
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const DRIVE_FOLDER_NAME = 'Kattalai CMS Backups';
 let accessToken: string | null = null;
