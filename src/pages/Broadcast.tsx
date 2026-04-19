@@ -3,48 +3,14 @@ import { PlanGate } from '../components/PlanGate';
 import { useCategoryStore, useDevoteeStore, useSettingsStore } from '../store';
 import { getDB, generateId } from '../db';
 
-// ── Pre-built Templates ───────────────────────────────────────────────────────
-const PRESET_TEMPLATES = [
-  {
-    id: 'renewal',
-    label: '🔔 Renewal Reminder',
-    text: `Om Namah Shivaya! 🙏\nVanakkam {name},\n\nYour Kattalai subscription of ₹{balance} is due on {expiry_date}. Kindly renew at your earliest convenience.\n\nMay Lord Shiva bless your family!\n— Kattalai Admin`,
-  },
-  {
-    id: 'due_alert',
-    label: '⚠️ Overdue Alert',
-    text: `🙏 Dear {name},\n\nThis is a gentle reminder that your Kattalai subscription balance of ₹{balance} is overdue as of {expiry_date}.\n\nPlease contact us to renew your blessings.\n\n— Kattalai Admin`,
-  },
-  {
-    id: 'festival',
-    label: '🎉 Festival Greetings',
-    text: `🌺 Om Namah Shivaya! 🌺\n\nVanakkam {name},\n\nWishing you and your family joyous blessings on this auspicious occasion from Chidambaram Natarajar Temple!\n\n— Kattalai Admin`,
-  },
-  {
-    id: 'thank_you',
-    label: '🙏 Thank You (Payment)',
-    text: `🙏 Dear {name},\n\nThank you for your generous contribution to Kattalai. Your support helps continue our spiritual services.\n\nMay Lord Nataraja shower his blessings on you and your family! 🌸\n\n— Kattalai Admin`,
-  },
-  {
-    id: 'new_year',
-    label: '🎆 New Year Wishes',
-    text: `🎆 Om Namah Shivaya! 🎆\n\nDear {name},\n\nWishing you and your family a spiritually enriching and prosperous New Year!\n\nYour subscription is active until {expiry_date}.\n\n— Kattalai Admin`,
-  },
-  {
-    id: 'custom',
-    label: '✏️ Custom Template',
-    text: '',
-  },
-];
-
 export function Broadcast() {
   const { categories } = useCategoryStore();
   const { devotees } = useDevoteeStore();
-  const { whatsappTemplate } = useSettingsStore();
+  const { messageTemplates } = useSettingsStore();
 
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState('custom');
-  const [template, setTemplate] = useState(whatsappTemplate);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [template, setTemplate] = useState('');
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -76,10 +42,11 @@ export function Broadcast() {
     reader.readAsDataURL(file);
   };
 
-  const handlePresetChange = (id: string) => {
-    setSelectedPreset(id);
-    const found = PRESET_TEMPLATES.find(t => t.id === id);
-    if (found && id !== 'custom') setTemplate(found.text);
+  const handleTemplateChange = (id: string) => {
+    setSelectedTemplateId(id);
+    const found = messageTemplates.find(t => t.id === id);
+    if (found) setTemplate(found.text);
+    else if (id === '') setTemplate('');
   };
 
   const startBroadcast = () => {
@@ -98,8 +65,8 @@ export function Broadcast() {
       .replace(/{name}/g, devotee.name)
       .replace(/{city}/g, devotee.city)
       .replace(/{nakshathiram}/g, categories.find(c => c.id === devotee.category)?.name || '')
-      .replace(/{expiry_date}/g, devotee.subscription_end.slice(0, 10))
-      .replace(/{balance}/g, Math.max(0, devotee.annual_amount - devotee.amount_paid).toString());
+      .replace(/{expiry_date}/g, (devotee.subscription_end || '').slice(0, 10))
+      .replace(/{balance}/g, Math.max(0, (devotee.annual_amount || 0) - (devotee.amount_paid || 0)).toString());
 
     const cc = devotee.country_code || '+91';
     const phoneDigits = cc.replace('+', '') + devotee.phone;
@@ -121,7 +88,7 @@ export function Broadcast() {
         year: String(d.getFullYear()),
         contact_count: sentCount,
         timestamp: d.toISOString(),
-        template_id: selectedPreset,
+        template_id: selectedTemplateId,
         has_image: Boolean(imageDataUrl),
       });
       loadHistory();
@@ -208,8 +175,9 @@ export function Broadcast() {
               {/* Step 3: Template */}
               <div className="form-group">
                 <label className="form-label">3. Select Message Template</label>
-                <select className="form-input mb-12" value={selectedPreset} onChange={e => handlePresetChange(e.target.value)}>
-                  {PRESET_TEMPLATES.map(t => (
+                <select className="form-input mb-12" value={selectedTemplateId} onChange={e => handleTemplateChange(e.target.value)}>
+                  <option value="">-- Custom Message / Select Template --</option>
+                  {messageTemplates.map(t => (
                     <option key={t.id} value={t.id}>{t.label}</option>
                   ))}
                 </select>
@@ -217,7 +185,7 @@ export function Broadcast() {
                   className="form-input"
                   rows={5}
                   value={template}
-                  onChange={e => { setTemplate(e.target.value); setSelectedPreset('custom'); }}
+                  onChange={e => { setTemplate(e.target.value); setSelectedTemplateId(''); }}
                 />
                 <div className="text-xs text-muted mt-4">
                   Placeholders: <code style={{ color: 'var(--gold)' }}>{'{name}'}</code>, <code style={{ color: 'var(--gold)' }}>{'{city}'}</code>, <code style={{ color: 'var(--gold)' }}>{'{nakshathiram}'}</code>, <code style={{ color: 'var(--gold)' }}>{'{expiry_date}'}</code>, <code style={{ color: 'var(--gold)' }}>{'{balance}'}</code>
@@ -271,8 +239,8 @@ export function Broadcast() {
                         <div className="fw-600">{categories.find(c => c.id === log.category_id)?.name || 'Unknown'}</div>
                         <div className="text-xs text-muted">{new Date(log.timestamp).toLocaleString()}</div>
                         {log.has_image && <div className="text-xs" style={{ color: 'var(--gold)' }}>🖼️ With image</div>}
-                        {log.template_id && log.template_id !== 'custom' && (
-                          <div className="text-xs text-muted">{PRESET_TEMPLATES.find(t => t.id === log.template_id)?.label}</div>
+                        {log.template_id && (
+                          <div className="text-xs text-muted">{messageTemplates.find(t => t.id === log.template_id)?.label || 'Deleted Template'}</div>
                         )}
                       </div>
                       <div className="badge badge-green">{log.contact_count} Sent</div>

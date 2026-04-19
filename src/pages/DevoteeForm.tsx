@@ -31,10 +31,12 @@ const COUNTRY_CODES = [
 export function DevoteeForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { refresh } = useDevoteeStore();
+  const { refresh, devotees } = useDevoteeStore();
   const { categories } = useCategoryStore();
-  const { cities, defaultAmount } = useSettingsStore();
+  const { defaultAmount } = useSettingsStore();
   const { showToast } = useToastStore();
+  
+  const dynamicCities = Array.from(new Set(devotees.map(d => d.city).filter(Boolean).sort()));
   
   const isEdit = Boolean(id);
   const isIndia = (cc: string) => cc === '+91';
@@ -111,9 +113,8 @@ export function DevoteeForm() {
   const selectPincode = (entry: { code: string; city: string; state: string }) => {
     setPincodeQuery(entry.code);
     handleChange('pincode', entry.code);
-    // Auto-fill city if it matches one of the preset cities
-    const matchCity = cities.find(c => c.toLowerCase() === entry.city.toLowerCase());
-    if (matchCity) handleChange('city', matchCity);
+    // Auto-fill city from geodata (always helpful)
+    handleChange('city', entry.city);
     setShowPincodeDrop(false);
   };
 
@@ -272,7 +273,16 @@ export function DevoteeForm() {
         <h4 className="mb-16 text-gold">2. Address & Location</h4>
         <div className="form-group">
           <label className="form-label">City</label>
-          <input className="form-input" value={formData.city} onChange={e => handleChange('city', e.target.value)} placeholder="e.g. Chidambaram" />
+          <input 
+            className="form-input" 
+            value={formData.city} 
+            onChange={e => handleChange('city', e.target.value)} 
+            placeholder="e.g. Chidambaram"
+            list="city-suggestions"
+          />
+          <datalist id="city-suggestions">
+            {dynamicCities.map(c => <option key={c} value={c} />)}
+          </datalist>
         </div>
 
         {/* Pincode field */}

@@ -9,7 +9,7 @@ export function AuthLayout({ children, title, subtitle }: { children: ReactNode;
           display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px',
           boxShadow: '0 8px 32px rgba(212, 175, 55, 0.3)'
         }}>
-          <span style={{ fontSize: '40px' }}>🛕</span>
+          <span style={{ fontSize: '40px' }}>ॐ</span>
         </div>
         <h1 style={{ textAlign: 'center', marginBottom: '8px' }}>{title}</h1>
         {subtitle && <p className="text-2" style={{ textAlign: 'center' }}>{subtitle}</p>}

@@ -76,6 +76,12 @@ export interface AuthCache {
   signature: string;
 }
 
+export interface MessageTemplate {
+  id: string;
+  label: string;
+  text: string;
+}
+
 interface KattalaiDB extends DBSchema {
   devotees:       { key: string; value: Devotee;       indexes: { by_city: string; by_category: string; by_status: string } };
   family_members: { key: string; value: FamilyMember;  indexes: { by_devotee: string } };
@@ -84,13 +90,14 @@ interface KattalaiDB extends DBSchema {
   broadcast_log:  { key: string; value: BroadcastLog;  indexes: { by_category: string } };
   settings:       { key: string; value: AppSettings };
   auth_cache:     { key: string; value: AuthCache };
+  message_templates: { key: string; value: MessageTemplate };
 }
 
 let db: IDBPDatabase<KattalaiDB>;
 
 export async function getDB() {
   if (db) return db;
-  db = await openDB<KattalaiDB>('KattalaiDB', 2, {
+  db = await openDB<KattalaiDB>('KattalaiDB', 3, {
     upgrade(db, oldVersion) {
       // ── Fresh install (oldVersion === 0) ───────────────────────
       if (oldVersion < 1) {
@@ -130,6 +137,13 @@ export async function getDB() {
         if (!db.objectStoreNames.contains('broadcast_log')) {
           const s = db.createObjectStore('broadcast_log', { keyPath: 'id' });
           s.createIndex('by_category', 'category_id', { unique: false });
+        }
+      }
+
+      // ── v2 → v3 migration: Custom Templates ───────────────────
+      if (oldVersion < 3) {
+        if (!db.objectStoreNames.contains('message_templates')) {
+          db.createObjectStore('message_templates', { keyPath: 'id' });
         }
       }
     },
@@ -274,6 +288,21 @@ export async function setAuthCache(cache: AuthCache): Promise<void> {
 export async function clearAuthCache(): Promise<void> {
   const db = await getDB();
   await db.clear('auth_cache');
+}
+
+export async function getAllMessageTemplates(): Promise<MessageTemplate[]> {
+  const db = await getDB();
+  return db.getAll('message_templates');
+}
+
+export async function upsertMessageTemplate(t: MessageTemplate): Promise<void> {
+  const db = await getDB();
+  await db.put('message_templates', t);
+}
+
+export async function deleteMessageTemplate(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('message_templates', id);
 }
 
 export function generateId(prefix = 'DEV'): string {

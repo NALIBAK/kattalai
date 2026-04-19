@@ -16,7 +16,6 @@ import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
 import { MapHub } from './pages/MapHub';
 import { ContactDeveloper } from './pages/ContactDeveloper';
-import { AppLock } from './components/AppLock';
 import { syncToGoogleDrive } from './utils/googleDrive';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -68,42 +67,34 @@ function App() {
 
   useEffect(() => {
     // Apply theme
-    const root = document.documentElement;
-    if (appTheme === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    } else {
-      root.setAttribute('data-theme', appTheme);
-    }
+    document.documentElement.setAttribute('data-theme', appTheme);
   }, [appTheme]);
 
   return (
     <BrowserRouter basename="/kattalai">
-      <AppLock>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/pending" element={<PendingApproval />} />
-          <Route path="/contact" element={<ContactDeveloper />} />
-          
-          {/* Protected app routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/devotees" element={<DevoteesList />} />
-              <Route path="/map" element={<MapHub />} />
-              <Route path="/devotees/new" element={<DevoteeForm />} />
-              <Route path="/devotees/:id" element={<DevoteeDetail />} />
-              <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
-              <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
-              <Route path="/broadcast" element={<Broadcast />} />
-              <Route path="/cover-print" element={<CoverPrint />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/settings/categories" element={<ManageCategories />} />
-            </Route>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/pending" element={<PendingApproval />} />
+        <Route path="/contact" element={<ContactDeveloper />} />
+        
+        {/* Protected app routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/devotees" element={<DevoteesList />} />
+            <Route path="/map" element={<MapHub />} />
+            <Route path="/devotees/new" element={<DevoteeForm />} />
+            <Route path="/devotees/:id" element={<DevoteeDetail />} />
+            <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
+            <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
+            <Route path="/broadcast" element={<Broadcast />} />
+            <Route path="/cover-print" element={<CoverPrint />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/categories" element={<ManageCategories />} />
           </Route>
-        </Routes>
-        <ToastContainer />
-      </AppLock>
+        </Route>
+      </Routes>
+      <ToastContainer />
     </BrowserRouter>
   );
 }

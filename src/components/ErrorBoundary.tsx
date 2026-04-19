@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex-col flex-center h-full p-32 text-center">
-          <div style={{ fontSize: '4rem', marginBottom: 24 }}>🛕</div>
+          <div style={{ fontSize: '4rem', marginBottom: 24 }}>ॐ</div>
           <h2 className="mb-16">Something went wrong.</h2>
           <p className="text-2 mb-24">The application encountered an unexpected error. Please try refreshing the page.</p>
           <button 

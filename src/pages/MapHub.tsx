@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { useDevoteeStore, useSettingsStore } from '../store';
+import { useDevoteeStore } from '../store';
 import { getSubscriptionStatus, getPaymentStatus } from '../db';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -17,7 +17,9 @@ L.Icon.Default.mergeOptions({
 export function MapHub() {
   const navigate = useNavigate();
   const { devotees, load } = useDevoteeStore();
-  const { cities } = useSettingsStore();
+  
+  // Dynamic list of cities from devotees
+  const cities = Array.from(new Set(devotees.map(d => d.city).filter(Boolean).sort()));
 
   const [viewMode, setViewMode] = useState<'map' | 'city'>('map');
   const [selectedCity, setSelectedCity] = useState<string>('');

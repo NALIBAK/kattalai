@@ -1,38 +1,37 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
-import { getDB, upsertDevotee, upsertCategory, Devotee, Category, PaymentEntry } from '../db';
+import { getDB, upsertDevotee, upsertCategory, Devotee, Category, PaymentEntry, MessageTemplate } from '../db';
 import { PlanGate } from '../components/PlanGate';
-import { useAppLock, LAST_ACTIVE_KEY } from '../components/AppLock';
 import { getGoogleAccessToken, syncToGoogleDrive } from '../utils/googleDrive';
 import JSZip from 'jszip';
 
 export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useToastStore();
-  const { hasPin, setPin } = useAppLock();
   
   // Stores
   const { 
-    theme, cities, defaultAmount, templeName, 
+    theme, defaultAmount, templeName, 
     gDriveLinked, gDriveAutoSync, gDriveLastSync,
-    setTheme, setCities, setDefaultAmount, setTempleName, setGDriveSetting 
+    messageTemplates,
+    setTheme, setDefaultAmount, setTempleName, setGDriveSetting,
+    addTemplate, updateTemplate, removeTemplate 
   } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
   const { categories, loadCategories } = useCategoryStore();
 
   // Local state for UI
-  const [newCity, setNewCity] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const vcfInputRef = useRef<HTMLInputElement>(null);
 
-  // App Lock state
-  const [pinInput, setPinInput] = useState('');
-  const [pinConfirm, setPinConfirm] = useState('');
-  const [pinStep, setPinStep] = useState<'view' | 'set' | 'change'>('view');
-  const [pinError, setPinError] = useState('');
+  // Template Editing state
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
+  const [tempLabel, setTempLabel] = useState('');
+  const [tempText, setTempText] = useState('');
 
   // VCF Import state
   interface ParsedContact {
@@ -52,36 +51,44 @@ export function Settings() {
   const [vcfModalOpen, setVcfModalOpen] = useState(false);
   const [vcfImporting, setVcfImporting] = useState(false);
 
-  const handleAddCity = () => {
-    if (!newCity.trim() || cities.includes(newCity.trim())) return;
-    setCities([...cities, newCity.trim()]);
-    setNewCity('');
+  // ── Template Handlers ──────────────────────────────────────────
+  const handleAddTemplate = async () => {
+    if (!tempLabel.trim() || !tempText.trim()) return;
+    await addTemplate(tempLabel.trim(), tempText.trim());
+    setIsAddingTemplate(false);
+    setTempLabel('');
+    setTempText('');
+    showToast('Template added!', 'success');
   };
 
-  // ── App Lock Handlers ──────────────────────────────────────────
-  const handleSavePin = () => {
-    setPinError('');
-    if (pinInput.length !== 4 || !/^\d{4}$/.test(pinInput)) {
-      setPinError('PIN must be exactly 4 digits');
-      return;
-    }
-    if (pinInput !== pinConfirm) {
-      setPinError('PINs do not match');
-      return;
-    }
-    setPin(pinInput);
-    setPinInput('');
-    setPinConfirm('');
-    setPinStep('view');
-    showToast('App Lock PIN set successfully! 🔐', 'success');
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate || !tempLabel.trim() || !tempText.trim()) return;
+    await updateTemplate({ ...editingTemplate, label: tempLabel.trim(), text: tempText.trim() });
+    setEditingTemplate(null);
+    setTempLabel('');
+    setTempText('');
+    showToast('Template updated!', 'success');
   };
 
-  const handleRemovePin = () => {
-    if (window.confirm('Remove App Lock? The app will no longer be protected.')) {
-      setPin('');
-      setPinStep('view');
-      showToast('App Lock removed', 'info');
+  const handleRemoveTemplate = async (id: string) => {
+    if (window.confirm('Delete this template?')) {
+      await removeTemplate(id);
+      showToast('Template deleted', 'info');
     }
+  };
+
+  const startEditTemplate = (t: MessageTemplate) => {
+    setEditingTemplate(t);
+    setTempLabel(t.label);
+    setTempText(t.text);
+    setIsAddingTemplate(false);
+  };
+
+  const startAddTemplate = () => {
+    setIsAddingTemplate(true);
+    setEditingTemplate(null);
+    setTempLabel('');
+    setTempText('');
   };
 
   // ── VCF Export ─────────────────────────────────────────────────
@@ -226,7 +233,7 @@ export function Settings() {
           country_code: c.country_code || '+91',
           pincode: c.pincode || undefined,
           address: c.address || '',
-          city: c.city || (cities[0] || ''),
+          city: c.city || '',
           gothram: c.gothram || '',
           category: vcfCategory,
           annual_amount: defaultAmount,
@@ -258,12 +265,6 @@ export function Settings() {
 
   const toggleAllVcf = (val: boolean) => {
     setVcfContacts(prev => prev.map(c => ({ ...c, selected: val })));
-  };
-
-  const handleRemoveCity = (city: string) => {
-    if (window.confirm(`Remove ${city} from presets? Existing devotees won't be modified.`)) {
-      setCities(cities.filter(c => c !== city));
-    }
   };
 
   const handleExportBackup = async () => {
@@ -364,123 +365,73 @@ export function Settings() {
           {/* Global Settings */}
           <div className="card mb-16">
             <h4 className="text-gold mb-16">Preferences</h4>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Theme</label>
-                <select className="form-input" value={theme} onChange={e => setTheme(e.target.value as 'light'|'dark'|'system')}>
-                  <option value="system">App System Default</option>
-                  <option value="dark">Dark Theme (Default)</option>
-                  <option value="light">Light Theme</option>
-                </select>
+            <div className="flex-between mb-16">
+              <div>
+                <div className="fw-600">Dark Mode</div>
+                <div className="text-sm text-2">Toggle between dark and light themes</div>
               </div>
+              <label className="switch">
+                <input 
+                  type="checkbox" 
+                  checked={theme === 'dark'} 
+                  onChange={e => setTheme(e.target.checked ? 'dark' : 'light')} 
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+            
+            <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Default Annual Amount (₹)</label>
                 <input className="form-input" type="number" value={defaultAmount} onChange={e => setDefaultAmount(Number(e.target.value) || 0)} />
               </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Temple Display Name</label>
-              <input className="form-input" value={templeName} onChange={e => setTempleName(e.target.value)} />
+              <div className="form-group">
+                <label className="form-label">Temple Display Name</label>
+                <input className="form-input" value={templeName} onChange={e => setTempleName(e.target.value)} />
+              </div>
             </div>
           </div>
 
-          {/* Cities Setup */}
+          {/* ── Message Templates Manager ── */}
           <div className="card mb-16">
-            <h4 className="text-gold mb-16">City Dropdown Presets</h4>
-            <div className="flex gap-8 mb-16" style={{ flexWrap: 'wrap' }}>
-              {cities.map(c => (
-                <span key={c} className="badge p-8 flex gap-8">
-                  {c} 
-                  <button 
-                    onClick={() => handleRemoveCity(c)} 
-                    style={{ background:'none', border:'none', color:'var(--red)', cursor:'pointer' }}
-                  >✖</button>
-                </span>
+            <div className="flex-between mb-16">
+              <h4 className="text-gold m-0">🛠️ Message Templates</h4>
+              <button className="btn btn-primary btn-sm" onClick={startAddTemplate}>+ Add New</button>
+            </div>
+
+            <div className="flex-col gap-12">
+              {messageTemplates.map(t => (
+                <div key={t.id} className="card-flat" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                  <div className="flex-between mb-8">
+                    <div className="fw-700">{t.label}</div>
+                    <div className="flex gap-8">
+                      <button className="btn-icon btn-sm" onClick={() => startEditTemplate(t)}>✏️</button>
+                      <button className="btn-icon btn-sm" style={{ color: 'var(--red)' }} onClick={() => handleRemoveTemplate(t.id)}>🗑️</button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted text-ellipsis-3">{t.text}</div>
+                </div>
               ))}
             </div>
-            <div className="flex gap-8">
-              <input className="form-input flex-1" placeholder="Add new city..." value={newCity} onChange={e => setNewCity(e.target.value)} />
-              <button className="btn btn-primary btn-sm" onClick={handleAddCity}>Add</button>
-            </div>
-          </div>
 
-          {/* ── App Lock ── */}
-          <div className="card mb-16" style={{ border: '2px solid var(--gold)' }}>
-            <h4 className="text-gold mb-16">🔐 App Lock (PIN)</h4>
-            <div className="text-sm text-2 mb-16">
-              Protect the app with a 4-digit PIN. Locks automatically after 5 minutes of inactivity.
-            </div>
-
-            {pinStep === 'view' && (
-              <>
-                {hasPin() ? (
-                  <div>
-                    <div className="flex-between mb-4">
-                      <span className="badge badge-green">🔒 PIN Active</span>
-                      <button 
-                        className="btn btn-primary btn-sm" 
-                        onClick={() => { localStorage.removeItem(LAST_ACTIVE_KEY); window.location.reload(); }}
-                        style={{ height: 32, padding: '0 12px' }}
-                      >
-                        🔐 Lock Session
-                      </button>
-                    </div>
-                    <div className="flex gap-8 mt-12">
-                      <button className="btn btn-ghost flex-1" onClick={() => { setPinStep('change'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
-                        ✏️ Change PIN
-                      </button>
-                      <button className="btn btn-ghost flex-1" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={handleRemovePin}>
-                        🗑️ Remove Lock
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="text-sm text-2 mb-12">No PIN set. App is currently unlocked.</div>
-                    <button className="btn btn-primary w-full" onClick={() => { setPinStep('set'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
-                      🔐 Set PIN Lock
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {(pinStep === 'set' || pinStep === 'change') && (
-              <div>
-                <h5 className="mb-12">{pinStep === 'set' ? 'Set New PIN' : 'Change PIN'}</h5>
+            {(isAddingTemplate || editingTemplate) && (
+              <div className="mt-24 p-16" style={{ background: 'var(--surface-3)', borderRadius: 12, border: '1.5px solid var(--gold)' }}>
+                <h5 className="mb-12">{isAddingTemplate ? '🆕 New Template' : '✏️ Edit Template'}</h5>
                 <div className="form-group">
-                  <label className="form-label">Enter 4-digit PIN</label>
-                  <input
-                    className="form-input"
-                    type="password"
-                    maxLength={4}
-                    inputMode="numeric"
-                    pattern="\d{4}"
-                    placeholder="••••"
-                    value={pinInput}
-                    onChange={e => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
-                    style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
-                  />
+                  <label className="form-label">Template Label</label>
+                  <input className="form-input" value={tempLabel} onChange={e => setTempLabel(e.target.value)} placeholder="e.g. Festival Wishes" />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Confirm PIN</label>
-                  <input
-                    className="form-input"
-                    type="password"
-                    maxLength={4}
-                    inputMode="numeric"
-                    pattern="\d{4}"
-                    placeholder="••••"
-                    value={pinConfirm}
-                    onChange={e => { setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
-                    style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
-                  />
+                  <label className="form-label">Message Text</label>
+                  <textarea className="form-input" rows={6} value={tempText} onChange={e => setTempText(e.target.value)} placeholder="Type your message..." />
+                  <div className="text-xs text-muted mt-4">
+                    Placeholders: {`{name}, {city}, {nakshathiram}, {expiry_date}, {balance}`}
+                  </div>
                 </div>
-                {pinError && <div style={{ color: 'var(--red)', fontSize: '0.85rem', marginBottom: 12 }}>⚠️ {pinError}</div>}
                 <div className="grid-2">
-                  <button className="btn btn-ghost" onClick={() => setPinStep('view')}>Cancel</button>
-                  <button className="btn btn-primary" onClick={handleSavePin} disabled={pinInput.length < 4 || pinConfirm.length < 4}>
-                    💾 Save PIN
+                  <button className="btn btn-ghost" onClick={() => { setIsAddingTemplate(false); setEditingTemplate(null); }}>Cancel</button>
+                  <button className="btn btn-primary" onClick={isAddingTemplate ? handleAddTemplate : handleUpdateTemplate} disabled={!tempLabel.trim() || !tempText.trim()}>
+                    💾 Save Template
                   </button>
                 </div>
               </div>

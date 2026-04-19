@@ -10,8 +10,8 @@ export function AppLayout() {
       {/* Top Header */}
       <header className="page-header flex-between">
         <div className="flex-center gap-8">
-          <div style={{ width: 32, height: 32, borderRadius: 16, background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            🛕
+          <div style={{ width: 32, height: 32, borderRadius: 16, background: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+            ॐ
           </div>
           <span className="fw-700">KATTALAI</span>
         </div>
