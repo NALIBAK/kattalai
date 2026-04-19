@@ -9,6 +9,7 @@ export function Navigation() {
     { path: '/devotees', icon: '👥', label: 'Devotees' },
     { path: '/broadcast', icon: '📢', label: 'Broadcast' },
     { path: '/print', icon: '🖨️', label: 'Print' },
+    { path: '/cover-print', icon: '✉️', label: 'Covers' },
     { path: '/settings', icon: '⚙️', label: 'Settings' }
   ];
 

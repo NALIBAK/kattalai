@@ -12,6 +12,7 @@ import { DevoteeDetail } from './pages/DevoteeDetail';
 import { DevoteePayments } from './pages/DevoteePayments';
 import { Broadcast } from './pages/Broadcast';
 import { PrintPage } from './pages/PrintPage';
+import { CoverPrint } from './pages/CoverPrint';
 import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
 import { MapHub } from './pages/MapHub';
@@ -75,6 +76,7 @@ function App() {
               <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
               <Route path="/broadcast" element={<Broadcast />} />
               <Route path="/print" element={<PrintPage />} />
+              <Route path="/cover-print" element={<CoverPrint />} />
               <Route path="/reports" element={<Navigate to="/print" replace />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/categories" element={<ManageCategories />} />

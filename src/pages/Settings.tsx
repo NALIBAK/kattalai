@@ -351,259 +351,262 @@ export function Settings() {
   };
 
   return (
-    <div>
-      <div className="section mb-16">
-        <h2 className="mb-16">Settings</h2>
+    <>
+      <div>
+        <div className="section mb-16">
+          <h2 className="mb-16">Settings</h2>
 
-        {/* Global Settings */}
-        <div className="card mb-16">
-          <h4 className="text-gold mb-16">Preferences</h4>
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Theme</label>
-              <select className="form-input" value={theme} onChange={e => setTheme(e.target.value as 'light'|'dark'|'system')}>
-                <option value="system">App System Default</option>
-                <option value="dark">Dark Theme (Default)</option>
-                <option value="light">Light Theme</option>
-              </select>
+          {/* Global Settings */}
+          <div className="card mb-16">
+            <h4 className="text-gold mb-16">Preferences</h4>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Theme</label>
+                <select className="form-input" value={theme} onChange={e => setTheme(e.target.value as 'light'|'dark'|'system')}>
+                  <option value="system">App System Default</option>
+                  <option value="dark">Dark Theme (Default)</option>
+                  <option value="light">Light Theme</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Default Annual Amount (₹)</label>
+                <input className="form-input" type="number" value={defaultAmount} onChange={e => setDefaultAmount(Number(e.target.value) || 0)} />
+              </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Default Annual Amount (₹)</label>
-              <input className="form-input" type="number" value={defaultAmount} onChange={e => setDefaultAmount(Number(e.target.value) || 0)} />
+              <label className="form-label">Temple Display Name</label>
+              <input className="form-input" value={templeName} onChange={e => setTempleName(e.target.value)} />
             </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Temple Display Name</label>
-            <input className="form-input" value={templeName} onChange={e => setTempleName(e.target.value)} />
-          </div>
-        </div>
 
-        {/* Cities Setup */}
-        <div className="card mb-16">
-          <h4 className="text-gold mb-16">City Dropdown Presets</h4>
-          <div className="flex gap-8 mb-16" style={{ flexWrap: 'wrap' }}>
-            {cities.map(c => (
-              <span key={c} className="badge p-8 flex gap-8">
-                {c} 
-                <button 
-                  onClick={() => handleRemoveCity(c)} 
-                  style={{ background:'none', border:'none', color:'var(--red)', cursor:'pointer' }}
-                >✖</button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-8">
-            <input className="form-input flex-1" placeholder="Add new city..." value={newCity} onChange={e => setNewCity(e.target.value)} />
-            <button className="btn btn-primary btn-sm" onClick={handleAddCity}>Add</button>
-          </div>
-        </div>
-
-        {/* ── App Lock ── */}
-        <div className="card mb-16" style={{ border: '2px solid var(--gold)' }}>
-          <h4 className="text-gold mb-16">🔐 App Lock (PIN)</h4>
-          <div className="text-sm text-2 mb-16">
-            Protect the app with a 4-digit PIN. Locks automatically after 5 minutes of inactivity.
+          {/* Cities Setup */}
+          <div className="card mb-16">
+            <h4 className="text-gold mb-16">City Dropdown Presets</h4>
+            <div className="flex gap-8 mb-16" style={{ flexWrap: 'wrap' }}>
+              {cities.map(c => (
+                <span key={c} className="badge p-8 flex gap-8">
+                  {c} 
+                  <button 
+                    onClick={() => handleRemoveCity(c)} 
+                    style={{ background:'none', border:'none', color:'var(--red)', cursor:'pointer' }}
+                  >✖</button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-8">
+              <input className="form-input flex-1" placeholder="Add new city..." value={newCity} onChange={e => setNewCity(e.target.value)} />
+              <button className="btn btn-primary btn-sm" onClick={handleAddCity}>Add</button>
+            </div>
           </div>
 
-          {pinStep === 'view' && (
-            <>
-              {hasPin() ? (
-                <div>
-                  <div className="flex gap-8 mb-4">
-                    <span className="badge badge-green">🔒 PIN Active</span>
+          {/* ── App Lock ── */}
+          <div className="card mb-16" style={{ border: '2px solid var(--gold)' }}>
+            <h4 className="text-gold mb-16">🔐 App Lock (PIN)</h4>
+            <div className="text-sm text-2 mb-16">
+              Protect the app with a 4-digit PIN. Locks automatically after 5 minutes of inactivity.
+            </div>
+
+            {pinStep === 'view' && (
+              <>
+                {hasPin() ? (
+                  <div>
+                    <div className="flex gap-8 mb-4">
+                      <span className="badge badge-green">🔒 PIN Active</span>
+                    </div>
+                    <div className="flex gap-8 mt-12">
+                      <button className="btn btn-ghost flex-1" onClick={() => { setPinStep('change'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
+                        ✏️ Change PIN
+                      </button>
+                      <button className="btn btn-ghost flex-1" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={handleRemovePin}>
+                        🗑️ Remove Lock
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-8 mt-12">
-                    <button className="btn btn-ghost flex-1" onClick={() => { setPinStep('change'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
-                      ✏️ Change PIN
-                    </button>
-                    <button className="btn btn-ghost flex-1" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={handleRemovePin}>
-                      🗑️ Remove Lock
+                ) : (
+                  <div>
+                    <div className="text-sm text-2 mb-12">No PIN set. App is currently unlocked.</div>
+                    <button className="btn btn-primary w-full" onClick={() => { setPinStep('set'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
+                      🔐 Set PIN Lock
                     </button>
                   </div>
+                )}
+              </>
+            )}
+
+            {(pinStep === 'set' || pinStep === 'change') && (
+              <div>
+                <h5 className="mb-12">{pinStep === 'set' ? 'Set New PIN' : 'Change PIN'}</h5>
+                <div className="form-group">
+                  <label className="form-label">Enter 4-digit PIN</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    maxLength={4}
+                    inputMode="numeric"
+                    pattern="\d{4}"
+                    placeholder="••••"
+                    value={pinInput}
+                    onChange={e => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
+                    style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
+                  />
                 </div>
-              ) : (
-                <div>
-                  <div className="text-sm text-2 mb-12">No PIN set. App is currently unlocked.</div>
-                  <button className="btn btn-primary w-full" onClick={() => { setPinStep('set'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
-                    🔐 Set PIN Lock
+                <div className="form-group">
+                  <label className="form-label">Confirm PIN</label>
+                  <input
+                    className="form-input"
+                    type="password"
+                    maxLength={4}
+                    inputMode="numeric"
+                    pattern="\d{4}"
+                    placeholder="••••"
+                    value={pinConfirm}
+                    onChange={e => { setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
+                    style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
+                  />
+                </div>
+                {pinError && <div style={{ color: 'var(--red)', fontSize: '0.85rem', marginBottom: 12 }}>⚠️ {pinError}</div>}
+                <div className="grid-2">
+                  <button className="btn btn-ghost" onClick={() => setPinStep('view')}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleSavePin} disabled={pinInput.length < 4 || pinConfirm.length < 4}>
+                    💾 Save PIN
                   </button>
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+          </div>
 
-          {(pinStep === 'set' || pinStep === 'change') && (
-            <div>
-              <h5 className="mb-12">{pinStep === 'set' ? 'Set New PIN' : 'Change PIN'}</h5>
-              <div className="form-group">
-                <label className="form-label">Enter 4-digit PIN</label>
-                <input
-                  className="form-input"
-                  type="password"
-                  maxLength={4}
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  placeholder="••••"
-                  value={pinInput}
-                  onChange={e => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
-                  style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Confirm PIN</label>
-                <input
-                  className="form-input"
-                  type="password"
-                  maxLength={4}
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  placeholder="••••"
-                  value={pinConfirm}
-                  onChange={e => { setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
-                  style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
-                />
-              </div>
-              {pinError && <div style={{ color: 'var(--red)', fontSize: '0.85rem', marginBottom: 12 }}>⚠️ {pinError}</div>}
-              <div className="grid-2">
-                <button className="btn btn-ghost" onClick={() => setPinStep('view')}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSavePin} disabled={pinInput.length < 4 || pinConfirm.length < 4}>
-                  💾 Save PIN
-                </button>
-              </div>
+          {/* ── VCF / Contacts Import & Export ── */}
+          <div className="card mb-16">
+            <h4 className="m-0 text-gold mb-4">📇 Contacts (.vcf)</h4>
+            <div className="text-sm text-2 mb-16">Import contacts from your phone as devotees, or export all devotees as a .vcf contacts file.</div>
+            <div className="grid-2">
+              <button className="btn btn-primary btn-sm" onClick={() => vcfInputRef.current?.click()}>
+                📤 Import VCF
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={handleExportVCF}>
+                📥 Export VCF
+              </button>
             </div>
-          )}
-        </div>
-
-        {/* ── VCF / Contacts Import & Export ── */}
-        <div className="card mb-16">
-          <h4 className="m-0 text-gold mb-4">📇 Contacts (.vcf)</h4>
-          <div className="text-sm text-2 mb-16">Import contacts from your phone as devotees, or export all devotees as a .vcf contacts file.</div>
-          <div className="grid-2">
-            <button className="btn btn-primary btn-sm" onClick={() => vcfInputRef.current?.click()}>
-              📤 Import VCF
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={handleExportVCF}>
-              📥 Export VCF
-            </button>
+            <input type="file" accept=".vcf,text/vcard" ref={vcfInputRef} style={{ display: 'none' }} onChange={handleVCFFileChange} />
           </div>
-          <input type="file" accept=".vcf,text/vcard" ref={vcfInputRef} style={{ display: 'none' }} onChange={handleVCFFileChange} />
-        </div>
 
-        {/* ── Custom Categories ── */}
-        <div className="card mb-16 flex-between">
-          <div>
-            <h4 className="m-0 text-gold mb-4">Categories & Nakshathirams</h4>
-            <div className="text-sm text-2">Manage colors, and custom VIP badges.</div>
-          </div>
-          <button className="btn btn-ghost" onClick={() => navigate('/settings/categories')}>Manage</button>
-        </div>
-
-        {/* Backup & Restore */}
-        <div className="card mb-16" style={{ border: '2px dashed var(--gold)' }}>
-          <h4 className="text-gold mb-16">Data Backup & Restore</h4>
-          <div className="text-sm text-2 mb-16">
-            Export a `ZIP` file containing raw CSVs and a system `JSON` backup file. Keep this safe to restore your device.
-          </div>
-          <div className="grid-2">
-            <button className="btn w-full flex-center" style={{ background: '#1890FF', color: '#fff' }} onClick={handleExportBackup} disabled={isExporting}>
-              {isExporting ? '...' : '📩 Export Backup'}
-            </button>
-            <button className="btn btn-ghost w-full flex-center" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
-              {isImporting ? '...' : '📂 Restore from ZIP'}
-            </button>
-            <input type="file" accept=".zip" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImportBackup} />
-          </div>
-        </div>
-
-        <PlanGate requiredPlan="pro" featureName="Google Drive Sync">
-          <div className="card mt-24 flex gap-12" style={{ alignItems: 'center' }}>
-            <div style={{ fontSize: '2rem' }}>☁️</div>
+          {/* ── Custom Categories ── */}
+          <div className="card mb-16 flex-between">
             <div>
-              <div className="fw-600">Google Drive Auto-Sync</div>
-              <div className="text-sm text-2">Coming soon: automatically backs up when you close the app.</div>
+              <h4 className="m-0 text-gold mb-4">Categories & Nakshathirams</h4>
+              <div className="text-sm text-2">Manage colors, and custom VIP badges.</div>
+            </div>
+            <button className="btn btn-ghost" onClick={() => navigate('/settings/categories')}>Manage</button>
+          </div>
+
+          {/* Backup & Restore */}
+          <div className="card mb-16" style={{ border: '2px dashed var(--gold)' }}>
+            <h4 className="text-gold mb-16">Data Backup & Restore</h4>
+            <div className="text-sm text-2 mb-16">
+              Export a `ZIP` file containing raw CSVs and a system `JSON` backup file. Keep this safe to restore your device.
+            </div>
+            <div className="grid-2">
+              <button className="btn w-full flex-center" style={{ background: '#1890FF', color: '#fff' }} onClick={handleExportBackup} disabled={isExporting}>
+                {isExporting ? '...' : '📩 Export Backup'}
+              </button>
+              <button className="btn btn-ghost w-full flex-center" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+                {isImporting ? '...' : '📂 Restore from ZIP'}
+              </button>
+              <input type="file" accept=".zip" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImportBackup} />
             </div>
           </div>
-        </PlanGate>
 
+          <PlanGate requiredPlan="pro" featureName="Google Drive Sync">
+            <div className="card mt-24 flex gap-12" style={{ alignItems: 'center' }}>
+              <div style={{ fontSize: '2rem' }}>☁️</div>
+              <div>
+                <div className="fw-600">Google Drive Auto-Sync</div>
+                <div className="text-sm text-2">Coming soon: automatically backs up when you close the app.</div>
+              </div>
+            </div>
+          </PlanGate>
+
+        </div>
       </div>
-    </div>
 
-    {/* ── VCF Import Preview Modal ── */}
-    {vcfModalOpen && (
-      <div className="sheet-overlay" onClick={e => e.target === e.currentTarget && setVcfModalOpen(false)}>
-        <div className="sheet" style={{ maxHeight: '92dvh' }}>
-          <div className="sheet-handle" />
+      {/* ── VCF Import Preview Modal ── */}
+      {vcfModalOpen && (
+        <div className="sheet-overlay" onClick={e => e.target === e.currentTarget && setVcfModalOpen(false)}>
+          <div className="sheet" style={{ maxHeight: '92dvh' }}>
+            <div className="sheet-handle" />
 
-          <div className="flex-between mb-16">
-            <div>
-              <h3 className="mb-0">📤 Import Contacts</h3>
-              <div className="text-xs text-muted">{vcfContacts.filter(c => c.selected).length} of {vcfContacts.length} selected</div>
+            <div className="flex-between mb-16">
+              <div>
+                <h3 className="mb-0">📤 Import Contacts</h3>
+                <div className="text-xs text-muted">{vcfContacts.filter(c => c.selected).length} of {vcfContacts.length} selected</div>
+              </div>
+              <button className="btn-icon" onClick={() => setVcfModalOpen(false)}>✖</button>
             </div>
-            <button className="btn-icon" onClick={() => setVcfModalOpen(false)}>✖</button>
-          </div>
 
-          {/* Default Category */}
-          <div className="form-group">
-            <label className="form-label">Assign to Category *</label>
-            <select className="form-input" value={vcfCategory} onChange={e => setVcfCategory(e.target.value)}>
-              <option value="">-- Select Category --</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name} {c.name_ta ? `(${c.name_ta})` : ''}</option>)}
-            </select>
-          </div>
+            {/* Default Category */}
+            <div className="form-group">
+              <label className="form-label">Assign to Category *</label>
+              <select className="form-input" value={vcfCategory} onChange={e => setVcfCategory(e.target.value)}>
+                <option value="">-- Select Category --</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name} {c.name_ta ? `(${c.name_ta})` : ''}</option>)}
+              </select>
+            </div>
 
-          {/* Select All / None */}
-          <div className="flex gap-8 mb-12">
-            <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(true)}>✅ Select All</button>
-            <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(false)}>⬜ Deselect All</button>
-          </div>
+            {/* Select All / None */}
+            <div className="flex gap-8 mb-12">
+              <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(true)}>✅ Select All</button>
+              <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(false)}>⬜ Deselect All</button>
+            </div>
 
-          {/* Contact list */}
-          <div className="flex-col gap-8 mb-16" style={{ maxHeight: '45dvh', overflowY: 'auto' }}>
-            {vcfContacts.map((c, i) => (
-              <div
-                key={i}
-                onClick={() => toggleVcfContact(i)}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  padding: '12px 14px',
-                  background: c.selected ? 'rgba(212,175,55,0.08)' : 'var(--surface-2)',
-                  border: `1.5px solid ${c.selected ? 'var(--gold)' : 'var(--border)'}`,
-                  borderRadius: 10,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {/* Checkbox */}
-                <div style={{
-                  width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 2,
-                  background: c.selected ? 'var(--gold)' : 'var(--surface)',
-                  border: `2px solid ${c.selected ? 'var(--gold)' : 'var(--border)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#000', fontSize: '0.75rem', fontWeight: 700,
-                }}>{ c.selected ? '✓' : '' }</div>
+            {/* Contact list */}
+            <div className="flex-col gap-8 mb-16" style={{ maxHeight: '45dvh', overflowY: 'auto' }}>
+              {vcfContacts.map((c, i) => (
+                <div
+                  key={i}
+                  onClick={() => toggleVcfContact(i)}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '12px 14px',
+                    background: c.selected ? 'rgba(212,175,55,0.08)' : 'var(--surface-2)',
+                    border: `1.5px solid ${c.selected ? 'var(--gold)' : 'var(--border)'}`,
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {/* Checkbox */}
+                  <div style={{
+                    width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 2,
+                    background: c.selected ? 'var(--gold)' : 'var(--surface)',
+                    border: `2px solid ${c.selected ? 'var(--gold)' : 'var(--border)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#000', fontSize: '0.75rem', fontWeight: 700,
+                  }}>{ c.selected ? '✓' : '' }</div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="fw-600" style={{ marginBottom: 2, lineHeight: 1.3 }}>{c.name}</div>
-                  {c.phone  && <div className="text-xs text-muted">📱 {c.country_code}{c.phone}</div>}
-                  {c.phone2 && <div className="text-xs text-muted">📱 {c.phone2}</div>}
-                  {c.phone3 && <div className="text-xs text-muted">📱 {c.phone3}</div>}
-                  {c.city   && <div className="text-xs text-muted">📍 {c.city}{c.pincode ? ` — ${c.pincode}` : ''}</div>}
-                  {c.gothram && <div className="text-xs" style={{ color: 'var(--gold)' }}>Gothram: {c.gothram}</div>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="fw-600" style={{ marginBottom: 2, lineHeight: 1.3 }}>{c.name}</div>
+                    {c.phone  && <div className="text-xs text-muted">📱 {c.country_code}{c.phone}</div>}
+                    {c.phone2 && <div className="text-xs text-muted">📱 {c.phone2}</div>}
+                    {c.phone3 && <div className="text-xs text-muted">📱 {c.phone3}</div>}
+                    {c.city   && <div className="text-xs text-muted">📍 {c.city}{c.pincode ? ` — ${c.pincode}` : ''}</div>}
+                    {c.gothram && <div className="text-xs" style={{ color: 'var(--gold)' }}>Gothram: {c.gothram}</div>}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Import Button */}
-          <button
-            className="btn btn-primary w-full"
-            onClick={handleVCFImport}
-            disabled={vcfImporting || vcfContacts.filter(c => c.selected).length === 0 || !vcfCategory}
-          >
-            {vcfImporting ? '⏳ Importing...' : `📥 Import ${vcfContacts.filter(c => c.selected).length} Contacts`}
-          </button>
+            {/* Import Button */}
+            <button
+              className="btn btn-primary w-full"
+              onClick={handleVCFImport}
+              disabled={vcfImporting || vcfContacts.filter(c => c.selected).length === 0 || !vcfCategory}
+            >
+              {vcfImporting ? '⏳ Importing...' : `📥 Import ${vcfContacts.filter(c => c.selected).length} Contacts`}
+            </button>
+          </div>
         </div>
-      </div>
-    )}
+      )}
+    </>
   );
 }
+
