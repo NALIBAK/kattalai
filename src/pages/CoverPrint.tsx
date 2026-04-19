@@ -53,12 +53,15 @@ export function CoverPrint() {
 
   // Helper to calculate auto font size based on text length
   const getAutoFontSize = (devotee: Devotee) => {
-    const totalChars = (devotee.name + devotee.address + devotee.city).length;
+    const lines = [devotee.name, devotee.address, `${devotee.city} ${devotee.pincode || ''}`];
+    const maxLineLength = Math.max(...lines.map(l => (l || '').length));
+    
     let size = settings.baseFontSize;
     
-    // Heuristic: scale down if content is long
-    if (totalChars > 150) size = settings.baseFontSize * 0.7;
-    else if (totalChars > 100) size = settings.baseFontSize * 0.85;
+    // Heuristic: based on characters per line (approx 35 chars at 18pt fits C6)
+    if (maxLineLength > 60) size = settings.baseFontSize * 0.6;
+    else if (maxLineLength > 45) size = settings.baseFontSize * 0.75;
+    else if (maxLineLength > 35) size = settings.baseFontSize * 0.85;
     
     return `${size}pt`;
   };
@@ -205,13 +208,15 @@ export function CoverPrint() {
         @media print {
           @page {
             margin: 0;
-            size: ${settings.mode === 'envelope' ? '162mm 114mm landscape' : 'A4 portrait'};
+            size: ${settings.mode === 'envelope' ? '162mm 114mm' : 'A4'};
           }
           
           body { 
             background: white !important; 
             margin: 0 !important;
             padding: 0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .no-print, .bottom-nav, .page-header { display: none !important; }
           

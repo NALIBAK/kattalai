@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const LOCK_STORAGE_KEY = 'kattalai_app_lock_pin';
-const LAST_ACTIVE_KEY = 'kattalai_last_active';
-const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+export const LOCK_STORAGE_KEY = 'kattalai_app_lock_pin';
+export const LAST_ACTIVE_KEY = 'kattalai_last_active';
+export const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 interface AppLockProps {
   children: React.ReactNode;

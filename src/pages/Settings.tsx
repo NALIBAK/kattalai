@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getDB, upsertDevotee, upsertCategory, Devotee, Category, PaymentEntry } from '../db';
 import { PlanGate } from '../components/PlanGate';
-import { useAppLock } from '../components/AppLock';
+import { useAppLock, LAST_ACTIVE_KEY } from '../components/AppLock';
 import JSZip from 'jszip';
 
 export function Settings() {
@@ -414,7 +414,7 @@ export function Settings() {
                       <span className="badge badge-green">🔒 PIN Active</span>
                       <button 
                         className="btn btn-primary btn-sm" 
-                        onClick={() => { localStorage.removeItem('LAST_ACTIVE_KEY'); window.location.reload(); }}
+                        onClick={() => { localStorage.removeItem(LAST_ACTIVE_KEY); window.location.reload(); }}
                         style={{ height: 32, padding: '0 12px' }}
                       >
                         🔐 Lock Session
