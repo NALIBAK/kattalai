@@ -16,13 +16,13 @@ export function AppLock({ children }: AppLockProps) {
   const [shake, setShake] = useState(false);
   const [hasPinSet, setHasPinSet] = useState(false);
 
-  // Check if PIN is configured
-  useEffect(() => {
+  // Check if PIN is configured & Handle initial lock
+  const checkInitialLock = useCallback(() => {
     const storedPin = localStorage.getItem(LOCK_STORAGE_KEY);
     if (storedPin) {
       setPin(storedPin);
       setHasPinSet(true);
-      // Check if we should auto-lock
+      
       const lastActive = localStorage.getItem(LAST_ACTIVE_KEY);
       if (lastActive) {
         const elapsed = Date.now() - parseInt(lastActive, 10);
@@ -30,10 +30,27 @@ export function AppLock({ children }: AppLockProps) {
           setIsLocked(true);
         }
       } else {
+        // If no last active, but PIN exists, we should probably lock
         setIsLocked(true);
       }
+    } else {
+      setHasPinSet(false);
+      setIsLocked(false);
     }
   }, []);
+
+  useEffect(() => {
+    checkInitialLock();
+
+    // Listen for storage changes (e.g. Settings updates PIN)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === LOCK_STORAGE_KEY || e.key === LAST_ACTIVE_KEY) {
+        checkInitialLock();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [checkInitialLock]);
 
   // Track last activity
   const resetTimer = useCallback(() => {
@@ -43,13 +60,18 @@ export function AppLock({ children }: AppLockProps) {
   useEffect(() => {
     if (!hasPinSet) return;
 
-    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
     events.forEach(ev => window.addEventListener(ev, resetTimer, { passive: true }));
 
-    // Check timeout every minute
+    // Check timeout every 30 seconds for better accuracy
     const interval = setInterval(() => {
       const storedPin = localStorage.getItem(LOCK_STORAGE_KEY);
-      if (!storedPin) return;
+      if (!storedPin) {
+        setHasPinSet(false);
+        setIsLocked(false);
+        return;
+      }
+
       const lastActive = localStorage.getItem(LAST_ACTIVE_KEY);
       if (lastActive) {
         const elapsed = Date.now() - parseInt(lastActive, 10);
@@ -57,9 +79,7 @@ export function AppLock({ children }: AppLockProps) {
           setIsLocked(true);
         }
       }
-    }, 60000);
-
-    resetTimer();
+    }, 30000);
 
     return () => {
       events.forEach(ev => window.removeEventListener(ev, resetTimer));

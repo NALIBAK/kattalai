@@ -203,6 +203,11 @@ export function CoverPrint() {
         }
 
         @media print {
+          @page {
+            margin: 0;
+            size: ${settings.mode === 'envelope' ? '162mm 114mm landscape' : 'A4 portrait'};
+          }
+          
           body { 
             background: white !important; 
             margin: 0 !important;
@@ -219,7 +224,7 @@ export function CoverPrint() {
             padding: 0 !important;
           }
 
-          /* Envelope Mode */
+          /* Envelope Mode - Optimized for physical C6 */
           .mode-envelope .print-card {
             width: 162mm;
             height: 114mm;
@@ -228,6 +233,7 @@ export function CoverPrint() {
             flex-direction: column;
             justify-content: center;
             box-sizing: border-box;
+            position: relative;
           }
 
           /* Label Mode - A4 */
@@ -244,25 +250,13 @@ export function CoverPrint() {
           .grid-3x5 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); }
 
           .mode-labels .print-card {
-            border: 0.1mm dashed #ccc; /* Guide lines for cutting */
+            border: 0.1mm dashed #ccc;
             page-break-inside: avoid;
             display: flex;
             flex-direction: column;
             justify-content: center;
             box-sizing: border-box;
             overflow: hidden;
-          }
-
-          @page {
-            margin: 0;
-          }
-          
-          .mode-envelope-page {
-            size: 162mm 114mm;
-          }
-          
-          .mode-labels-page {
-            size: A4 portrait;
           }
         }
 
