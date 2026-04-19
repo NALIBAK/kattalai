@@ -4,7 +4,11 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 export interface Devotee {
   id: string;
   name: string;
-  phone: string;
+  phone: string;        // primary phone (with country code e.g. +91XXXXXXXXXX)
+  phone2?: string;      // optional 2nd phone
+  phone3?: string;      // optional 3rd phone
+  country_code: string; // e.g. '+91'
+  pincode?: string;     // postal / zip code
   address: string;
   city: string;
   location_lat?: number;
@@ -55,6 +59,8 @@ export interface BroadcastLog {
   contact_count: number;
   timestamp: string;
   note?: string;
+  template_id?: string;
+  has_image?: boolean;
 }
 
 export interface AppSettings {
@@ -84,36 +90,48 @@ let db: IDBPDatabase<KattalaiDB>;
 
 export async function getDB() {
   if (db) return db;
-  db = await openDB<KattalaiDB>('KattalaiDB', 1, {
-    upgrade(db) {
-      // Devotees
-      const devStore = db.createObjectStore('devotees', { keyPath: 'id' });
-      devStore.createIndex('by_city',     'city',     { unique: false });
-      devStore.createIndex('by_category', 'category', { unique: false });
-      devStore.createIndex('by_status',   'subscription_end', { unique: false });
+  db = await openDB<KattalaiDB>('KattalaiDB', 2, {
+    upgrade(db, oldVersion) {
+      // ── Fresh install (oldVersion === 0) ───────────────────────
+      if (oldVersion < 1) {
+        // Devotees
+        const devStore = db.createObjectStore('devotees', { keyPath: 'id' });
+        devStore.createIndex('by_city',     'city',     { unique: false });
+        devStore.createIndex('by_category', 'category', { unique: false });
+        devStore.createIndex('by_status',   'subscription_end', { unique: false });
 
-      // Family members
-      const famStore = db.createObjectStore('family_members', { keyPath: 'id' });
-      famStore.createIndex('by_devotee', 'devotee_id', { unique: false });
+        // Family members
+        const famStore = db.createObjectStore('family_members', { keyPath: 'id' });
+        famStore.createIndex('by_devotee', 'devotee_id', { unique: false });
 
-      // Payment history
-      const payStore = db.createObjectStore('payment_history', { keyPath: 'id' });
-      payStore.createIndex('by_devotee', 'devotee_id', { unique: false });
+        // Payment history
+        const payStore = db.createObjectStore('payment_history', { keyPath: 'id' });
+        payStore.createIndex('by_devotee', 'devotee_id', { unique: false });
 
-      // Categories
-      const catStore = db.createObjectStore('categories', { keyPath: 'id' });
-      catStore.createIndex('by_sort', 'sort_order', { unique: false });
+        // Categories
+        const catStore = db.createObjectStore('categories', { keyPath: 'id' });
+        catStore.createIndex('by_sort', 'sort_order', { unique: false });
 
-      // Broadcast log
-      const bcastStore = db.createObjectStore('broadcast_log', { keyPath: 'id' });
-      bcastStore.createIndex('by_category', 'category_id', { unique: false });
+        // Broadcast log
+        const bcastStore = db.createObjectStore('broadcast_log', { keyPath: 'id' });
+        bcastStore.createIndex('by_category', 'category_id', { unique: false });
 
-      // Settings & Auth
-      db.createObjectStore('settings',   { keyPath: 'key' });
-      db.createObjectStore('auth_cache', { keyPath: 'email' });
+        // Settings & Auth
+        db.createObjectStore('settings',   { keyPath: 'key' });
+        db.createObjectStore('auth_cache', { keyPath: 'email' });
 
-      // Seed 27 Nakshathirams
-      seedNakshathirams(catStore as any);
+        // Seed 27 Nakshathirams
+        seedNakshathirams(catStore as any);
+      }
+
+      // ── v1 → v2 migration ─────────────────────────────────────
+      if (oldVersion < 2) {
+        // Ensure broadcast_log store exists (safe no-op if already created in v1 path)
+        if (!db.objectStoreNames.contains('broadcast_log')) {
+          const s = db.createObjectStore('broadcast_log', { keyPath: 'id' });
+          s.createIndex('by_category', 'category_id', { unique: false });
+        }
+      }
     },
   });
   return db;

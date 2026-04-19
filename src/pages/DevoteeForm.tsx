@@ -1,7 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
+import { searchPincodes } from '../data/india_pincodes';
+
+// ── Country codes ─────────────────────────────────────────────────────────────
+const COUNTRY_CODES = [
+  { code: '+91', name: 'India 🇮🇳' },
+  { code: '+1',  name: 'USA/Canada 🇺🇸' },
+  { code: '+44', name: 'UK 🇬🇧' },
+  { code: '+61', name: 'Australia 🇦🇺' },
+  { code: '+971', name: 'UAE 🇦🇪' },
+  { code: '+65', name: 'Singapore 🇸🇬' },
+  { code: '+60', name: 'Malaysia 🇲🇾' },
+  { code: '+94', name: 'Sri Lanka 🇱🇰' },
+  { code: '+977', name: 'Nepal 🇳🇵' },
+  { code: '+880', name: 'Bangladesh 🇧🇩' },
+  { code: '+49', name: 'Germany 🇩🇪' },
+  { code: '+33', name: 'France 🇫🇷' },
+  { code: '+81', name: 'Japan 🇯🇵' },
+  { code: '+86', name: 'China 🇨🇳' },
+  { code: '+55', name: 'Brazil 🇧🇷' },
+  { code: '+7',  name: 'Russia 🇷🇺' },
+  { code: '+27', name: 'South Africa 🇿🇦' },
+  { code: '+234', name: 'Nigeria 🇳🇬' },
+  { code: '+966', name: 'Saudi Arabia 🇸🇦' },
+  { code: '+974', name: 'Qatar 🇶🇦' },
+];
 
 export function DevoteeForm() {
   const { id } = useParams();
@@ -12,30 +37,84 @@ export function DevoteeForm() {
   const { showToast } = useToastStore();
   
   const isEdit = Boolean(id);
+  const isIndia = (cc: string) => cc === '+91';
 
   const [formData, setFormData] = useState<Partial<Devotee>>({
-    name: '', phone: '', address: '', city: cities[0] || '',
-    gothram: '', category: categories[0]?.id || '',
-    annual_amount: defaultAmount, amount_paid: 0,
-    prasadham_count: 1, prasadham_override: false,
-    location_lat: undefined, location_lng: undefined, location_accurate: false,
+    name: '',
+    country_code: '+91',
+    phone: '',
+    phone2: '',
+    phone3: '',
+    pincode: '',
+    address: '',
+    city: cities[0] || '',
+    gothram: '',
+    category: categories[0]?.id || '',
+    annual_amount: defaultAmount,
+    amount_paid: 0,
+    prasadham_count: 1,
+    prasadham_override: false,
+    location_lat: undefined,
+    location_lng: undefined,
+    location_accurate: false,
     subscription_start: new Date().toISOString().split('T')[0],
     subscription_end: new Date(Date.now() + 365*86400000).toISOString().split('T')[0],
   });
 
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [pincodeQuery, setPincodeQuery] = useState('');
+  const [pincodeSuggestions, setPincodeSuggestions] = useState<{ code: string; city: string; state: string }[]>([]);
+  const [showPincodeDrop, setShowPincodeDrop] = useState(false);
+  const pincodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isEdit && id) {
       getDevotee(id).then(d => {
-        if (d) setFormData(d);
-        else { showToast('Devotee not found', 'error'); navigate('/devotees'); }
+        if (d) {
+          setFormData(d);
+          setPincodeQuery(d.pincode || '');
+        } else {
+          showToast('Devotee not found', 'error');
+          navigate('/devotees');
+        }
       });
     }
   }, [id, isEdit, navigate, showToast]);
 
+  // Close pincode dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (pincodeRef.current && !pincodeRef.current.contains(e.target as Node)) {
+        setShowPincodeDrop(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const handleChange = (field: keyof Devotee, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePincodeInput = (val: string) => {
+    setPincodeQuery(val);
+    handleChange('pincode', val);
+    if (isIndia(formData.country_code || '+91') && val.length >= 2) {
+      const results = searchPincodes(val);
+      setPincodeSuggestions(results);
+      setShowPincodeDrop(results.length > 0);
+    } else {
+      setShowPincodeDrop(false);
+    }
+  };
+
+  const selectPincode = (entry: { code: string; city: string; state: string }) => {
+    setPincodeQuery(entry.code);
+    handleChange('pincode', entry.code);
+    // Auto-fill city if it matches one of the preset cities
+    const matchCity = cities.find(c => c.toLowerCase() === entry.city.toLowerCase());
+    if (matchCity) handleChange('city', matchCity);
+    setShowPincodeDrop(false);
   };
 
   const handleGeocode = async () => {
@@ -48,19 +127,18 @@ export function DevoteeForm() {
       const query = encodeURIComponent(`${formData.address}, ${formData.city}`);
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
       const data = await res.json();
-      
       if (data && data.length > 0) {
         setFormData(prev => ({
-          ...prev, 
-          location_lat: parseFloat(data[0].lat), 
+          ...prev,
+          location_lat: parseFloat(data[0].lat),
           location_lng: parseFloat(data[0].lon),
-          location_accurate: false // It's a geocoded estimate, not GPS
+          location_accurate: false,
         }));
         showToast('Approximate location found!', 'success');
       } else {
         showToast('Location not found. Try simplifying the address.', 'error');
       }
-    } catch (e) {
+    } catch {
       showToast('Geocoding failed. Check network.', 'error');
     } finally {
       setIsGeocoding(false);
@@ -70,20 +148,20 @@ export function DevoteeForm() {
   const getGPS = () => {
     if (!navigator.geolocation) { showToast('GPS not supported on device', 'error'); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      pos => {
         setFormData(prev => ({
-          ...prev, location_lat: pos.coords.latitude, location_lng: pos.coords.longitude, location_accurate: true
+          ...prev, location_lat: pos.coords.latitude, location_lng: pos.coords.longitude, location_accurate: true,
         }));
         showToast('Accurate GPS Location saved', 'success');
       },
-      (err) => showToast(err.message, 'error'),
+      err => showToast(err.message, 'error'),
       { enableHighAccuracy: true }
     );
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.phone || !formData.category) {
-      showToast('Name, Phone, and Category are required', 'error');
+    if (!formData.name || !formData.category) {
+      showToast('Name and Category are required', 'error');
       return;
     }
 
@@ -91,15 +169,19 @@ export function DevoteeForm() {
     const newDevotee: Devotee = {
       ...formData as Devotee,
       id: devId,
+      country_code: formData.country_code || '+91',
       created_at: isEdit ? formData.created_at! : new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
     await upsertDevotee(newDevotee);
     await refresh();
-    showToast(`Devotee saved`, 'success');
+    showToast('Devotee saved', 'success');
     navigate(isEdit ? `/devotees/${devId}` : '/devotees');
   };
+
+  const countryCode = formData.country_code || '+91';
+  const india = isIndia(countryCode);
 
   return (
     <div>
@@ -111,16 +193,63 @@ export function DevoteeForm() {
         <button className="btn btn-primary btn-sm" onClick={handleSave}>💾 Save</button>
       </div>
 
+      {/* ── 1. Personal Details ── */}
       <div className="card mb-16">
         <h4 className="mb-16 text-gold">1. Personal Details</h4>
         <div className="form-group">
           <label className="form-label">Full Name *</label>
           <input className="form-input" value={formData.name} onChange={e => handleChange('name', e.target.value)} placeholder="e.g. Rajan Murugesan" />
         </div>
-        
+
+        {/* Country Code + Primary Phone */}
         <div className="form-group">
-          <label className="form-label">Phone Number * (WhatsApp)</label>
-          <input className="form-input" type="tel" value={formData.phone} onChange={e => handleChange('phone', e.target.value)} placeholder="10-digit number" />
+          <label className="form-label">Phone (WhatsApp)
+            <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>Optional</span>
+          </label>
+          <div className="flex gap-8">
+            <select
+              className="form-input"
+              style={{ width: 160, flexShrink: 0 }}
+              value={countryCode}
+              onChange={e => handleChange('country_code', e.target.value)}
+            >
+              {COUNTRY_CODES.map(c => (
+                <option key={c.code} value={c.code}>{c.code} {c.name}</option>
+              ))}
+            </select>
+            <input
+              className="form-input flex-1"
+              type="tel"
+              value={formData.phone}
+              onChange={e => handleChange('phone', e.target.value)}
+              placeholder={india ? '10-digit number' : 'Phone number'}
+            />
+          </div>
+        </div>
+
+        {/* Additional phone numbers */}
+        <div className="form-group">
+          <label className="form-label">Alt Phone 2
+            <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>Optional</span>
+          </label>
+          <div className="flex gap-8">
+            <select className="form-input" style={{ width: 120, flexShrink: 0 }} value={countryCode} onChange={e => handleChange('country_code', e.target.value)}>
+              {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+            </select>
+            <input className="form-input flex-1" type="tel" value={formData.phone2 || ''} onChange={e => handleChange('phone2', e.target.value)} placeholder="Optional 2nd number" />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Alt Phone 3
+            <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>Optional</span>
+          </label>
+          <div className="flex gap-8">
+            <select className="form-input" style={{ width: 120, flexShrink: 0 }} value={countryCode} onChange={e => handleChange('country_code', e.target.value)}>
+              {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+            </select>
+            <input className="form-input flex-1" type="tel" value={formData.phone3 || ''} onChange={e => handleChange('phone3', e.target.value)} placeholder="Optional 3rd number" />
+          </div>
         </div>
 
         <div className="grid-2">
@@ -138,13 +267,51 @@ export function DevoteeForm() {
         </div>
       </div>
 
+      {/* ── 2. Address & Location ── */}
       <div className="card mb-16">
         <h4 className="mb-16 text-gold">2. Address & Location</h4>
         <div className="form-group">
-          <label className="form-label">City *</label>
+          <label className="form-label">City</label>
           <select className="form-input" value={formData.city} onChange={e => handleChange('city', e.target.value)}>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+        </div>
+
+        {/* Pincode field */}
+        <div className="form-group" ref={pincodeRef} style={{ position: 'relative' }}>
+          <label className="form-label">
+            Pincode / ZIP Code
+            {india && <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>India — searchable</span>}
+            {!india && <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>Optional</span>}
+          </label>
+          <input
+            className="form-input"
+            value={pincodeQuery}
+            onChange={e => handlePincodeInput(e.target.value)}
+            onFocus={() => { if (pincodeSuggestions.length > 0) setShowPincodeDrop(true); }}
+            placeholder={india ? 'Search by pincode or city...' : 'Enter postal/ZIP code (optional)'}
+            autoComplete="off"
+          />
+          {showPincodeDrop && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 8, maxHeight: 220, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            }}>
+              {pincodeSuggestions.map(s => (
+                <div
+                  key={s.code}
+                  onMouseDown={() => selectPincode(s)}
+                  style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span className="fw-600">{s.code}</span>
+                  <span className="text-sm text-2">{s.city}, {s.state}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -161,7 +328,6 @@ export function DevoteeForm() {
               </span>
             )}
           </div>
-          
           <div className="flex gap-8 mt-8">
             <button className="btn btn-sm btn-ghost flex-1" onClick={handleGeocode} disabled={isGeocoding}>
               {isGeocoding ? '...' : '🌐 Auto-Locate'}
@@ -178,9 +344,9 @@ export function DevoteeForm() {
         </div>
       </div>
 
+      {/* ── 3. Subscription ── */}
       <div className="card mb-32">
         <h4 className="mb-16 text-gold">3. Subscription</h4>
-        
         <div className="grid-2">
           <div className="form-group">
             <label className="form-label">Annual Amount (₹)</label>
@@ -192,7 +358,6 @@ export function DevoteeForm() {
             {isEdit && <div className="form-hint">Edit via Payment History</div>}
           </div>
         </div>
-
         <div className="grid-2">
           <div className="form-group">
             <label className="form-label">Start Date</label>
@@ -204,7 +369,6 @@ export function DevoteeForm() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore, useSettingsStore, useCategoryStore } from './store';
 import { getAuthCache } from './db';
 
@@ -11,10 +11,11 @@ import { DevoteeForm } from './pages/DevoteeForm';
 import { DevoteeDetail } from './pages/DevoteeDetail';
 import { DevoteePayments } from './pages/DevoteePayments';
 import { Broadcast } from './pages/Broadcast';
-import { Reports } from './pages/Reports';
+import { PrintPage } from './pages/PrintPage';
 import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
 import { MapHub } from './pages/MapHub';
+import { AppLock } from './components/AppLock';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
@@ -57,28 +58,31 @@ function App() {
 
   return (
     <BrowserRouter basename="/kattalai">
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/pending" element={<PendingApproval />} />
-        
-        {/* Protected app routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/devotees" element={<DevoteesList />} />
-            <Route path="/map" element={<MapHub />} />
-            <Route path="/devotees/new" element={<DevoteeForm />} />
-            <Route path="/devotees/:id" element={<DevoteeDetail />} />
-            <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
-            <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
-            <Route path="/broadcast" element={<Broadcast />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/categories" element={<ManageCategories />} />
+      <AppLock>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/pending" element={<PendingApproval />} />
+          
+          {/* Protected app routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/devotees" element={<DevoteesList />} />
+              <Route path="/map" element={<MapHub />} />
+              <Route path="/devotees/new" element={<DevoteeForm />} />
+              <Route path="/devotees/:id" element={<DevoteeDetail />} />
+              <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
+              <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
+              <Route path="/broadcast" element={<Broadcast />} />
+              <Route path="/print" element={<PrintPage />} />
+              <Route path="/reports" element={<Navigate to="/print" replace />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings/categories" element={<ManageCategories />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-      <ToastContainer />
+        </Routes>
+        <ToastContainer />
+      </AppLock>
     </BrowserRouter>
   );
 }

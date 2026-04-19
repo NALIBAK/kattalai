@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getDB, upsertDevotee, upsertCategory, Devotee, Category, PaymentEntry } from '../db';
 import { PlanGate } from '../components/PlanGate';
+import { useAppLock } from '../components/AppLock';
 import JSZip from 'jszip';
 
 export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useToastStore();
+  const { hasPin, setPin } = useAppLock();
   
   // Stores
   const { theme, cities, defaultAmount, templeName, setTheme, setCities, setDefaultAmount, setTempleName } = useSettingsStore();
@@ -20,10 +22,69 @@ export function Settings() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // App Lock state
+  const [pinInput, setPinInput] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [pinStep, setPinStep] = useState<'view' | 'set' | 'change'>('view');
+  const [pinError, setPinError] = useState('');
+
   const handleAddCity = () => {
     if (!newCity.trim() || cities.includes(newCity.trim())) return;
     setCities([...cities, newCity.trim()]);
     setNewCity('');
+  };
+
+  // ── App Lock Handlers ──────────────────────────────────────────
+  const handleSavePin = () => {
+    setPinError('');
+    if (pinInput.length !== 4 || !/^\d{4}$/.test(pinInput)) {
+      setPinError('PIN must be exactly 4 digits');
+      return;
+    }
+    if (pinInput !== pinConfirm) {
+      setPinError('PINs do not match');
+      return;
+    }
+    setPin(pinInput);
+    setPinInput('');
+    setPinConfirm('');
+    setPinStep('view');
+    showToast('App Lock PIN set successfully! 🔐', 'success');
+  };
+
+  const handleRemovePin = () => {
+    if (window.confirm('Remove App Lock? The app will no longer be protected.')) {
+      setPin('');
+      setPinStep('view');
+      showToast('App Lock removed', 'info');
+    }
+  };
+
+  // ── VCF Export ─────────────────────────────────────────────────
+  const handleExportVCF = () => {
+    if (devotees.length === 0) { showToast('No devotees to export', 'error'); return; }
+    const lines: string[] = [];
+    devotees.forEach(d => {
+      lines.push('BEGIN:VCARD');
+      lines.push('VERSION:3.0');
+      lines.push(`FN:${d.name}`);
+      lines.push(`N:${d.name};;;;`);
+      const cc = (d.country_code || '+91').replace('+', '');
+      if (d.phone) lines.push(`TEL;TYPE=CELL:+${cc}${d.phone}`);
+      if (d.phone2) lines.push(`TEL;TYPE=CELL:+${cc}${d.phone2}`);
+      if (d.phone3) lines.push(`TEL;TYPE=CELL:+${cc}${d.phone3}`);
+      if (d.address) lines.push(`ADR:;;${d.address};${d.city};${d.pincode || ''};;India`);
+      if (d.gothram) lines.push(`NOTE:Gothram: ${d.gothram}`);
+      lines.push('END:VCARD');
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/vcard' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Kattalai_Contacts_${new Date().toISOString().slice(0, 10)}.vcf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${devotees.length} contacts as VCF`, 'success');
   };
 
   const handleRemoveCity = (city: string) => {
@@ -169,7 +230,96 @@ export function Settings() {
           </div>
         </div>
 
-        {/* Custom Categories */}
+        {/* ── App Lock ── */}
+        <div className="card mb-16" style={{ border: '2px solid var(--gold)' }}>
+          <h4 className="text-gold mb-16">🔐 App Lock (PIN)</h4>
+          <div className="text-sm text-2 mb-16">
+            Protect the app with a 4-digit PIN. Locks automatically after 5 minutes of inactivity.
+          </div>
+
+          {pinStep === 'view' && (
+            <>
+              {hasPin() ? (
+                <div>
+                  <div className="flex gap-8 mb-4">
+                    <span className="badge badge-green">🔒 PIN Active</span>
+                  </div>
+                  <div className="flex gap-8 mt-12">
+                    <button className="btn btn-ghost flex-1" onClick={() => { setPinStep('change'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
+                      ✏️ Change PIN
+                    </button>
+                    <button className="btn btn-ghost flex-1" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={handleRemovePin}>
+                      🗑️ Remove Lock
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-sm text-2 mb-12">No PIN set. App is currently unlocked.</div>
+                  <button className="btn btn-primary w-full" onClick={() => { setPinStep('set'); setPinInput(''); setPinConfirm(''); setPinError(''); }}>
+                    🔐 Set PIN Lock
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {(pinStep === 'set' || pinStep === 'change') && (
+            <div>
+              <h5 className="mb-12">{pinStep === 'set' ? 'Set New PIN' : 'Change PIN'}</h5>
+              <div className="form-group">
+                <label className="form-label">Enter 4-digit PIN</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="\d{4}"
+                  placeholder="••••"
+                  value={pinInput}
+                  onChange={e => { setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
+                  style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirm PIN</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  maxLength={4}
+                  inputMode="numeric"
+                  pattern="\d{4}"
+                  placeholder="••••"
+                  value={pinConfirm}
+                  onChange={e => { setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4)); setPinError(''); }}
+                  style={{ letterSpacing: 8, textAlign: 'center', fontSize: '1.3rem' }}
+                />
+              </div>
+              {pinError && <div style={{ color: 'var(--red)', fontSize: '0.85rem', marginBottom: 12 }}>⚠️ {pinError}</div>}
+              <div className="grid-2">
+                <button className="btn btn-ghost" onClick={() => setPinStep('view')}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSavePin} disabled={pinInput.length < 4 || pinConfirm.length < 4}>
+                  💾 Save PIN
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── VCF / Contacts Export ── */}
+        <div className="card mb-16">
+          <div className="flex-between">
+            <div>
+              <h4 className="m-0 text-gold mb-4">📇 Export Contacts (.vcf)</h4>
+              <div className="text-sm text-2">Export all devotees as a contacts file with multiple phone numbers. Import directly into your phone.</div>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={handleExportVCF} style={{ marginLeft: 12, flexShrink: 0 }}>
+              📥 Export VCF
+            </button>
+          </div>
+        </div>
+
+        {/* ── Custom Categories ── */}
         <div className="card mb-16 flex-between">
           <div>
             <h4 className="m-0 text-gold mb-4">Categories & Nakshathirams</h4>

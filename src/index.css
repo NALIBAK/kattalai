@@ -582,3 +582,100 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 }
 .plan-lock-icon { font-size: 2rem; }
 .plan-lock-label { font-size: 0.75rem; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ── Shake Animation (AppLock wrong PIN) ── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-8px); }
+  35%       { transform: translateX(8px); }
+  55%       { transform: translateX(-6px); }
+  75%       { transform: translateX(6px); }
+  90%       { transform: translateX(-3px); }
+}
+.shake { animation: shake 0.45s var(--ease); }
+
+/* ── Flex utility ── */
+.flex-1 { flex: 1; }
+
+/* ── Spacing extras ── */
+.mb-24 { margin-bottom: 24px; }
+.mb-32 { margin-bottom: 32px; }
+.mt-4  { margin-top: 4px; }
+.p-32  { padding: 32px; }
+.p-12  { padding: 12px; }
+
+/* ── Print Styles ── */
+@media print {
+  /* Hide all UI chrome */
+  .no-print,
+  .bottom-nav,
+  .page-header,
+  .toast-container,
+  button,
+  select,
+  .form-group,
+  .card:not(.print-area),
+  .badge,
+  .flex-between > button {
+    display: none !important;
+  }
+
+  /* Reset layout for print */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 11px !important;
+  }
+
+  #root {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .page {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Print area styles */
+  .print-area {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .print-header {
+    display: block !important;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+
+  .print-table {
+    width: 100% !important;
+    font-size: 9px !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #ddd !important;
+    padding: 4px 6px !important;
+  }
+
+  .print-table thead tr {
+    background: #eee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page breaks */
+  tr { page-break-inside: avoid; }
+  tfoot { display: table-footer-group; }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm 8mm;
+  }
+}
+

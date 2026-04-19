@@ -8,7 +8,7 @@ export function Navigation() {
     { path: '/', icon: '📊', label: 'Home' },
     { path: '/devotees', icon: '👥', label: 'Devotees' },
     { path: '/broadcast', icon: '📢', label: 'Broadcast' },
-    { path: '/reports', icon: '📄', label: 'Reports' },
+    { path: '/print', icon: '🖨️', label: 'Print' },
     { path: '/settings', icon: '⚙️', label: 'Settings' }
   ];
 
