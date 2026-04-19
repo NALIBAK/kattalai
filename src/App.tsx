@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useAuthStore, useSettingsStore, useCategoryStore } from './store';
+import { useAuthStore, useSettingsStore, useCategoryStore, useDevoteeStore } from './store';
 import { getAuthCache } from './db';
 
 import { Login } from './pages/Login';
@@ -15,16 +15,36 @@ import { CoverPrint } from './pages/CoverPrint';
 import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
 import { MapHub } from './pages/MapHub';
+import { ContactDeveloper } from './pages/ContactDeveloper';
 import { AppLock } from './components/AppLock';
+import { syncToGoogleDrive } from './utils/googleDrive';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { ToastContainer } from './components/ToastContainer';
 
 function App() {
-  const { setCache, setLoading } = useAuthStore();
-  const { loadSettings, theme: appTheme } = useSettingsStore();
+  const { setCache, setLoading, plan } = useAuthStore();
+  const { loadSettings, theme: appTheme, gDriveAutoSync, gDriveLinked, setGDriveSetting } = useSettingsStore();
   const { loadCategories } = useCategoryStore();
+  const { devotees, load: loadDevotees } = useDevoteeStore();
+
+  useEffect(() => {
+    // ── Auto Sync Logic ──
+    if (!gDriveAutoSync || !gDriveLinked || plan !== 'pro' || devotees.length === 0) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const time = await syncToGoogleDrive();
+        await setGDriveSetting('gDriveLastSync', time);
+        console.log('✅ Auto-synced to Google Drive');
+      } catch (e: any) {
+        console.error('❌ Auto-sync failed', e);
+      }
+    }, 60000); // 1 minute debounce
+
+    return () => clearTimeout(timer);
+  }, [devotees.length, gDriveAutoSync, gDriveLinked, plan, setGDriveSetting]);
 
   useEffect(() => {
     // Initial app load: check cache
@@ -32,6 +52,7 @@ function App() {
       try {
         await loadSettings();
         await loadCategories();
+        await loadDevotees();
         const cache = await getAuthCache();
         if (cache) {
           setCache(cache);
@@ -62,6 +83,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/pending" element={<PendingApproval />} />
+          <Route path="/contact" element={<ContactDeveloper />} />
           
           {/* Protected app routes */}
           <Route element={<ProtectedRoute />}>

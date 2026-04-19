@@ -94,6 +94,9 @@ interface SettingsState {
   notifyDaysBefore: number;
   broadcastResetDay: number;
   whatsappTemplate: string;
+  gDriveLinked: boolean;
+  gDriveAutoSync: boolean;
+  gDriveLastSync: string | null;
   loadSettings: () => Promise<void>;
   setTheme: (t: SettingsState['theme']) => void;
   setCities: (c: string[]) => void;
@@ -101,6 +104,7 @@ interface SettingsState {
   setWhatsappTemplate: (t: string) => void;
   updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
   setTempleName: (n: string) => Promise<void>;
+  setGDriveSetting: (key: 'gDriveLinked' | 'gDriveAutoSync' | 'gDriveLastSync', value: any) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -112,7 +116,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   language: 'en',
   notifyDaysBefore: 30,
   broadcastResetDay: 1,
-  whatsappTemplate: 'Vanakkam! This is Chidambaram Natarajar Temple. Your subscription is due for renewal.',
+  priority: 1,
+  whatsappTemplate: 'Om Namah Shivaya! Dear {name},\n\nWe wanted to remind you that your Kattalai subscription of ₹{balance} is due on {expiry_date}. May Lord Shiva bless your family with prosperity.\n\n- Kattalai Admin',
+  gDriveLinked: false,
+  gDriveAutoSync: false,
+  gDriveLastSync: null,
   loadSettings: async () => {
     // We only load these keys from DB, others use defaults if not found
     const templeName = await getSetting('temple_name', 'Sri Kattalai Temple');
@@ -124,8 +132,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     const notifyDaysBefore = await getSetting('notify_days_before', 30);
     const broadcastResetDay = await getSetting('broadcast_reset_day', 1);
     const whatsappTemplate = await getSetting('whatsapp_template', 'Om Namah Shivaya! Dear {name},\n\nWe wanted to remind you that your Kattalai subscription of ₹{balance} is due on {expiry_date}. May Lord Shiva bless your family with prosperity.\n\n- Kattalai Admin');
+    const gDriveLinked = await getSetting('gdrive_linked', false);
+    const gDriveAutoSync = await getSetting('gdrive_autosync', false);
+    const gDriveLastSync = await getSetting('gdrive_lastsync', null);
     
-    set({ templeName, cities, defaultAmount, prasadhamRule, theme, language, notifyDaysBefore, broadcastResetDay, whatsappTemplate } as any);
+    set({ 
+      templeName, cities, defaultAmount, prasadhamRule, theme, language, 
+      notifyDaysBefore, broadcastResetDay, whatsappTemplate,
+      gDriveLinked, gDriveAutoSync, gDriveLastSync
+    } as any);
   },
   setTheme: (t) => set({ theme: t }),
   setCities: async (c) => {
@@ -144,6 +159,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setTempleName: async (n) => {
     set({ templeName: n });
     await setSetting('temple_name', n);
+  },
+  setGDriveSetting: async (key, value) => {
+    set({ [key]: value } as any);
+    const dbKey = key === 'gDriveLinked' ? 'gdrive_linked' : key === 'gDriveAutoSync' ? 'gdrive_autosync' : 'gdrive_lastsync';
+    await setSetting(dbKey, value);
   },
 }));
 

@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { useAuthStore } from '../store';
 import { isPlanAllowed } from '../auth';
+import { useNavigate } from 'react-router-dom';
 
 interface PlanGateProps {
   requiredPlan: 'plus' | 'pro';
@@ -9,6 +10,7 @@ interface PlanGateProps {
 }
 
 export function PlanGate({ requiredPlan, featureName, children }: PlanGateProps) {
+  const navigate = useNavigate();
   const { plan } = useAuthStore();
 
   if (plan && isPlanAllowed(plan, requiredPlan)) {
@@ -29,11 +31,7 @@ export function PlanGate({ requiredPlan, featureName, children }: PlanGateProps)
       <button 
         className="btn btn-sm mt-8" 
         style={{ background: color, color: '#fff' }}
-        onClick={() => {
-          // Open WhatsApp to request upgrade
-          const text = encodeURIComponent(`Vanakkam! I would like to upgrade my KATTALAI management app to the ${requiredPlan.toUpperCase()} plan to use: ${featureName}.`);
-          window.open(`whatsapp://send?phone=919876543210&text=${text}`, '_blank');
-        }}
+        onClick={() => navigate('/contact')}
       >
         Request Upgrade
       </button>

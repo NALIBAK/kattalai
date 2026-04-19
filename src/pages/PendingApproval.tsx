@@ -7,12 +7,9 @@ export function PendingApproval() {
   const navigate = useNavigate();
   const { user, setUser } = useAuthStore();
   
-  // Update this to the real owner WhatsApp number later
-  const ownerWhatsApp = '919876543210'; 
 
   const handleContact = () => {
-    const text = encodeURIComponent(`Vanakkam! My email is ${user?.email}. Please approve my access for the KATTALAI MANAGEMENT app.`);
-    window.open(`whatsapp://send?phone=${ownerWhatsApp}&text=${text}`, '_blank');
+    navigate('/contact');
   };
 
   const handleLogout = async () => {

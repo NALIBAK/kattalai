@@ -4,6 +4,7 @@ import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } fr
 import { getDB, upsertDevotee, upsertCategory, Devotee, Category, PaymentEntry } from '../db';
 import { PlanGate } from '../components/PlanGate';
 import { useAppLock, LAST_ACTIVE_KEY } from '../components/AppLock';
+import { getGoogleAccessToken, syncToGoogleDrive } from '../utils/googleDrive';
 import JSZip from 'jszip';
 
 export function Settings() {
@@ -12,7 +13,11 @@ export function Settings() {
   const { hasPin, setPin } = useAppLock();
   
   // Stores
-  const { theme, cities, defaultAmount, templeName, setTheme, setCities, setDefaultAmount, setTempleName } = useSettingsStore();
+  const { 
+    theme, cities, defaultAmount, templeName, 
+    gDriveLinked, gDriveAutoSync, gDriveLastSync,
+    setTheme, setCities, setDefaultAmount, setTempleName, setGDriveSetting 
+  } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
   const { categories, loadCategories } = useCategoryStore();
 
@@ -524,11 +529,91 @@ export function Settings() {
           </div>
 
           <PlanGate requiredPlan="pro" featureName="Google Drive Sync">
+            <div className="card mb-16" style={{ border: '2px solid var(--gold)' }}>
+              <div className="flex-between mb-8">
+                <h4 className="text-gold m-0">☁️ Cloud Sync (Google Drive)</h4>
+                {gDriveLinked && <span className="badge badge-green">Linked</span>}
+              </div>
+              <div className="text-sm text-2 mb-16">
+                Back up your data to Google Drive. Auto-sync uploads a copy whenever you close or update the app.
+              </div>
+              
+              {!gDriveLinked ? (
+                <button 
+                  className="btn btn-primary w-full flex-center gap-8" 
+                  onClick={async () => {
+                    try {
+                      await getGoogleAccessToken();
+                      await setGDriveSetting('gDriveLinked', true);
+                      showToast('Google Drive Linked! 🔗', 'success');
+                    } catch (e: any) {
+                      showToast(e.message || 'Linking failed', 'error');
+                    }
+                  }}
+                >
+                  🔗 Link Google Drive
+                </button>
+              ) : (
+                <div className="flex-col gap-12">
+                  <div className="flex-between">
+                    <span className="text-sm">Enabled Auto-Sync</span>
+                    <label className="switch">
+                      <input 
+                        type="checkbox" 
+                        checked={gDriveAutoSync} 
+                        onChange={e => setGDriveSetting('gDriveAutoSync', e.target.checked)} 
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  
+                  <div className="flex gap-8">
+                    <button 
+                      className="btn btn-ghost flex-1 btn-sm"
+                      onClick={async () => {
+                        try {
+                          showToast('Syncing to Drive...', 'info');
+                          const time = await syncToGoogleDrive();
+                          await setGDriveSetting('gDriveLastSync', time);
+                          showToast('Cloud Sync Successful! ✅', 'success');
+                        } catch (e: any) {
+                          showToast(e.message || 'Sync failed', 'error');
+                        }
+                      }}
+                    >
+                      🔄 Sync Now
+                    </button>
+                    <button 
+                      className="btn btn-ghost btn-sm" 
+                      style={{ color: 'var(--red)' }}
+                      onClick={() => {
+                        if (window.confirm('Unlink Google Drive? Your cloud backups will remain, but the app will stop syncing.')) {
+                          setGDriveSetting('gDriveLinked', false);
+                          setGDriveSetting('gDriveAutoSync', false);
+                          showToast('Google Drive Unlinked', 'info');
+                        }
+                      }}
+                    >
+                      Unlink
+                    </button>
+                  </div>
+                  
+                  {gDriveLastSync && (
+                    <div className="text-xs text-muted text-center">
+                      Last synced: {gDriveLastSync}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </PlanGate>
+
+          <PlanGate requiredPlan="pro" featureName="Advanced Reports">
             <div className="card mt-24 flex gap-12" style={{ alignItems: 'center' }}>
-              <div style={{ fontSize: '2rem' }}>☁️</div>
+              <div style={{ fontSize: '2rem' }}>📊</div>
               <div>
-                <div className="fw-600">Google Drive Auto-Sync</div>
-                <div className="text-sm text-2">Coming soon: automatically backs up when you close the app.</div>
+                <div className="fw-600">Advanced Analytics</div>
+                <div className="text-sm text-2">Detailed collections and category trends coming soon.</div>
               </div>
             </div>
           </PlanGate>
