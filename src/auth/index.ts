@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js';
-import { setAuthCache, clearAuthCache } from '../db';
+import { setAuthCache, clearAuthCache, getAuthCache } from '../db';
 import type { AuthCache } from '../db';
 
 const HMAC_SECRET = import.meta.env.VITE_HMAC_SECRET || 'dev_secret_kattalai_2026';
@@ -9,7 +9,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 // ── HMAC signing ──────────────────────────────────────────────────────────────
 function signCache(data: Omit<AuthCache, 'signature'>): string {
-  const payload = `${data.email}|${data.plan}|${data.verified_on}|${data.valid_until}`;
+  const payload = `${data.email}|${data.plan}|${data.verified_on}|${data.valid_until}|${data.real_expiry}|${data.name}|${data.picture}`;
   return CryptoJS.HmacSHA256(payload, HMAC_SECRET).toString();
 }
 
@@ -73,7 +73,7 @@ async function fetchApprovedUsers(): Promise<SheetRow[]> {
 }
 
 // ── Main auth verification ────────────────────────────────────────────────────
-export async function verifyAccess(email: string): Promise<AuthCache | null> {
+export async function verifyAccess(email: string, name?: string, picture?: string): Promise<AuthCache | null> {
   try {
     const users = await fetchApprovedUsers();
     const user = users.find(u => u.email === email.toLowerCase());
@@ -82,16 +82,28 @@ export async function verifyAccess(email: string): Promise<AuthCache | null> {
     // Check expiry from sheet
     if (new Date(user.expiry) < new Date()) return null;
 
+    const existing = await getAuthCache();
+    
     const today = new Date().toISOString().split('T')[0];
     const validUntil = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
 
-    const cacheData = { email, plan: user.plan, verified_on: today, valid_until: validUntil };
+    const cacheData: Omit<AuthCache, 'signature'> = { 
+      email, 
+      name: name || existing?.name || 'User',
+      picture: picture || existing?.picture || '',
+      plan: user.plan, 
+      real_expiry: user.expiry,
+      verified_on: today, 
+      valid_until: validUntil 
+    };
+    
     const signature = signCache(cacheData);
     const cache: AuthCache = { ...cacheData, signature };
 
     await setAuthCache(cache);
     return cache;
-  } catch {
+  } catch (error) {
+    console.error('VerifyAccess error', error);
     return null;
   }
 }

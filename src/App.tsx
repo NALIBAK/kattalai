@@ -21,9 +21,13 @@ import { syncToGoogleDrive } from './utils/googleDrive';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { ToastContainer } from './components/ToastContainer';
+import { Profile } from './pages/Profile';
+import { verifyAccess } from './auth';
+import { useToastStore } from './store';
 
 function App() {
-  const { setCache, setLoading, plan } = useAuthStore();
+  const { setCache, setLoading, plan, user, isLoading } = useAuthStore();
+  const { showToast } = useToastStore();
   const { loadSettings, theme: appTheme, gDriveAutoSync, gDriveLinked, setGDriveSetting } = useSettingsStore();
   const { loadCategories } = useCategoryStore();
   const { devotees, load: loadDevotees } = useDevoteeStore();
@@ -55,6 +59,14 @@ function App() {
         const cache = await getAuthCache();
         if (cache) {
           setCache(cache);
+          
+          // Silent refresh in background on load
+          verifyAccess(cache.email).then(newCache => {
+            if (newCache && newCache.plan !== cache.plan) {
+              setCache(newCache);
+              showToast(`Subscription updated to ${newCache.plan.toUpperCase()}!`, 'success');
+            }
+          }).catch(() => {});
         }
       } catch (e) {
         console.error("Init error", e);
@@ -63,7 +75,26 @@ function App() {
       }
     };
     initApp();
-  }, [setCache, setLoading, loadSettings, loadCategories]);
+  }, [setCache, setLoading, loadSettings, loadCategories, showToast]);
+
+  useEffect(() => {
+    // 24-hour auto-refresh interval
+    if (!user?.email) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const newCache = await verifyAccess(user.email);
+        if (newCache && newCache.plan !== plan) {
+          setCache(newCache);
+          showToast(`Subscription updated to ${newCache.plan.toUpperCase()}!`, 'success');
+        }
+      } catch (e) {
+        console.error("Interval refresh failed", e);
+      }
+    }, 24 * 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user?.email, plan, setCache, showToast]);
 
   useEffect(() => {
     // Apply theme
@@ -91,6 +122,7 @@ function App() {
             <Route path="/cover-print" element={<CoverPrint />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/categories" element={<ManageCategories />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
         </Route>
       </Routes>

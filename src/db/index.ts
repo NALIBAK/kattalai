@@ -70,7 +70,10 @@ export interface AppSettings {
 
 export interface AuthCache {
   email: string;
+  name: string;
+  picture: string;
   plan: 'free' | 'plus' | 'pro';
+  real_expiry: string;
   verified_on: string;
   valid_until: string;
   signature: string;

@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import { useAuthStore } from '../store';
 
@@ -17,12 +17,14 @@ export function AppLayout() {
         </div>
         
         {user && (
-          <img 
-            src={user.picture} 
-            alt={user.name} 
-            style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} 
-            referrerPolicy="no-referrer"
-          />
+          <Link to="/profile">
+            <img 
+              src={user.picture} 
+              alt={user.name} 
+              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} 
+              referrerPolicy="no-referrer"
+            />
+          </Link>
         )}
       </header>
       

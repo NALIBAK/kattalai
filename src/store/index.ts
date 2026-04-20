@@ -7,7 +7,7 @@ import type { Devotee, Category, AuthCache, MessageTemplate } from '../db';
 
 // ── Auth Store ─────────────────────────────────────────────────
 interface AuthState {
-  user: { email: string; name: string; picture: string } | null;
+  user: { email: string; name: string; picture: string; real_expiry: string } | null;
   cache: AuthCache | null;
   plan: 'free' | 'plus' | 'pro' | null;
   isLoading: boolean;
@@ -24,7 +24,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   plan: null,
   isLoading: true,
   setUser: (user) => set({ user }),
-  setCache: (cache) => set({ cache, plan: cache.plan }),
+  setCache: (cache) => set({ 
+    cache, 
+    plan: cache.plan, 
+    user: { 
+      email: cache.email, 
+      name: cache.name, 
+      picture: cache.picture,
+      real_expiry: cache.real_expiry
+    } 
+  }),
   setPlan: (plan) => set({ plan }),
   setLoading: (isLoading) => set({ isLoading }),
   logout: () => set({ user: null, cache: null, plan: null }),

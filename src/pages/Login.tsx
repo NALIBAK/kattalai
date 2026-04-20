@@ -32,7 +32,7 @@ export function Login() {
       const user = await signInWithGoogle();
       setUser(user);
       
-      const newCache = await verifyAccess(user.email);
+      const newCache = await verifyAccess(user.email, user.name, user.picture);
       if (newCache) {
         setCache(newCache);
         showToast(`Welcome back, ${user.name}!`, 'success');
