@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useAuthStore } from '../store';
+import { PlanGate } from '../components/PlanGate';
 import { getSubscriptionStatus } from '../db';
 
 export function Dashboard() {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore, useAuthStore } from '../store';
+import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
 import { PlanGate } from '../components/PlanGate';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
 import { searchPincodes } from '../data/india_pincodes';

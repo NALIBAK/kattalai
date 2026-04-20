@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCategoryStore, useToastStore, useAuthStore } from '../store';
+import { useCategoryStore, useToastStore } from '../store';
 import { PlanGate } from '../components/PlanGate';
 import { getDevotee, deleteDevotee, Devotee, getSubscriptionStatus, getPaymentStatus } from '../db';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
