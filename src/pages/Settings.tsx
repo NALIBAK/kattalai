@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
-import { getDB, upsertDevotee, upsertCategory, Devotee, Category, PaymentEntry, MessageTemplate } from '../db';
+import { getDB, Devotee, PaymentEntry, MessageTemplate, upsertDevotee } from '../db';
 import { PlanGate } from '../components/PlanGate';
-import { getGoogleAccessToken, syncToGoogleDrive } from '../utils/googleDrive';
+import { restoreFromBackupBlob } from '../utils/backup';
 import JSZip from 'jszip';
 
 export function Settings() {
@@ -13,9 +13,8 @@ export function Settings() {
   // Stores
   const { 
     theme, defaultAmount, templeName, 
-    gDriveLinked, gDriveAutoSync, gDriveLastSync,
     messageTemplates,
-    setTheme, setDefaultAmount, setTempleName, setGDriveSetting,
+    setTheme, setDefaultAmount, setTempleName,
     addTemplate, updateTemplate, removeTemplate 
   } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
@@ -323,34 +322,7 @@ export function Settings() {
 
     setIsImporting(true);
     try {
-      const zip = new JSZip();
-      const loadedZip = await zip.loadAsync(file);
-      const jsonFile = loadedZip.file('kattalai_db_backup.json');
-      
-      if (!jsonFile) throw new Error('Valid JSON backup file not found in ZIP');
-      
-      const jsonStr = await jsonFile.async('string');
-      const data = JSON.parse(jsonStr);
-
-      if (data.categories) {
-        for (const cat of data.categories) {
-          await upsertCategory(cat as Category);
-        }
-      }
-      if (data.devotees) {
-        for (const dev of data.devotees) {
-          await upsertDevotee(dev as Devotee);
-        }
-      }
-      if (data.payments) {
-        const db = await getDB();
-        const tx = db.transaction('payment_history', 'readwrite');
-        for (const pay of data.payments) {
-          tx.store.put(pay as PaymentEntry);
-        }
-        await tx.done;
-      }
-
+      await restoreFromBackupBlob(file);
       await refreshDevotees();
       await loadCategories();
       showToast('Backup restored successfully!', 'success');
@@ -470,10 +442,10 @@ export function Settings() {
           </div>
 
           {/* Backup & Restore */}
-          <div className="card mb-16" style={{ border: '2px dashed var(--gold)' }}>
-            <h4 className="text-gold mb-16">Data Backup & Restore</h4>
+          <div className="card mb-32" style={{ border: '2px dashed var(--gold)' }}>
+            <h4 className="text-gold mb-16">Custom Data Backup & Restore</h4>
             <div className="text-sm text-2 mb-16">
-              Export a `ZIP` file containing raw CSVs and a system `JSON` backup file. Keep this safe to restore your device.
+              Export a `ZIP` file containing your data. Use this for manual offline backups or to move data between devices manually.
             </div>
             <div className="grid-2">
               <button className="btn w-full flex-center" style={{ background: '#1890FF', color: '#fff' }} onClick={handleExportBackup} disabled={isExporting}>
@@ -486,85 +458,6 @@ export function Settings() {
             </div>
           </div>
 
-          <PlanGate requiredPlan="pro" featureName="Google Drive Sync">
-            <div className="card mb-16" style={{ border: '2px solid var(--gold)' }}>
-              <div className="flex-between mb-8">
-                <h4 className="text-gold m-0">☁️ Cloud Sync (Google Drive)</h4>
-                {gDriveLinked && <span className="badge badge-green">Linked</span>}
-              </div>
-              <div className="text-sm text-2 mb-16">
-                Back up your data to Google Drive. Auto-sync uploads a copy whenever you close or update the app.
-              </div>
-              
-              {!gDriveLinked ? (
-                <button 
-                  className="btn btn-primary w-full flex-center gap-8" 
-                  onClick={async () => {
-                    try {
-                      await getGoogleAccessToken();
-                      await setGDriveSetting('gDriveLinked', true);
-                      showToast('Google Drive Linked! 🔗', 'success');
-                    } catch (e: any) {
-                      showToast(e.message || 'Linking failed', 'error');
-                    }
-                  }}
-                >
-                  🔗 Link Google Drive
-                </button>
-              ) : (
-                <div className="flex-col gap-12">
-                  <div className="flex-between">
-                    <span className="text-sm">Enabled Auto-Sync</span>
-                    <label className="switch">
-                      <input 
-                        type="checkbox" 
-                        checked={gDriveAutoSync} 
-                        onChange={e => setGDriveSetting('gDriveAutoSync', e.target.checked)} 
-                      />
-                      <span className="slider round"></span>
-                    </label>
-                  </div>
-                  
-                  <div className="flex gap-8">
-                    <button 
-                      className="btn btn-ghost flex-1 btn-sm"
-                      onClick={async () => {
-                        try {
-                          showToast('Syncing to Drive...', 'info');
-                          const time = await syncToGoogleDrive();
-                          await setGDriveSetting('gDriveLastSync', time);
-                          showToast('Cloud Sync Successful! ✅', 'success');
-                        } catch (e: any) {
-                          showToast(e.message || 'Sync failed', 'error');
-                        }
-                      }}
-                    >
-                      🔄 Sync Now
-                    </button>
-                    <button 
-                      className="btn btn-ghost btn-sm" 
-                      style={{ color: 'var(--red)' }}
-                      onClick={() => {
-                        if (window.confirm('Unlink Google Drive? Your cloud backups will remain, but the app will stop syncing.')) {
-                          setGDriveSetting('gDriveLinked', false);
-                          setGDriveSetting('gDriveAutoSync', false);
-                          showToast('Google Drive Unlinked', 'info');
-                        }
-                      }}
-                    >
-                      Unlink
-                    </button>
-                  </div>
-                  
-                  {gDriveLastSync && (
-                    <div className="text-xs text-muted text-center">
-                      Last synced: {gDriveLastSync}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </PlanGate>
 
           <PlanGate requiredPlan="pro" featureName="Advanced Reports">
             <div className="card mt-24 flex gap-12" style={{ alignItems: 'center' }}>

@@ -16,7 +16,9 @@ import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
 import { MapHub } from './pages/MapHub';
 import { ContactDeveloper } from './pages/ContactDeveloper';
-import { syncToGoogleDrive } from './utils/googleDrive';
+import { syncToGoogleDrive, getGoogleAccessToken, getFolderId, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
+import { restoreFromBackupBlob } from './utils/backup';
+import { GDriveGate } from './components/GDriveGate';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
@@ -33,18 +35,18 @@ function App() {
   const { devotees, load: loadDevotees } = useDevoteeStore();
 
   useEffect(() => {
-    // ── Auto Sync Logic ──
-    if (!gDriveAutoSync || !gDriveLinked || plan !== 'pro' || devotees.length === 0) return;
+    // ── Mandatory Auto Sync Logic (5s delay) ──
+    if (!gDriveLinked || devotees.length === 0) return;
 
     const timer = setTimeout(async () => {
       try {
         const time = await syncToGoogleDrive();
         await setGDriveSetting('gDriveLastSync', time);
-        console.log('✅ Auto-synced to Google Drive');
+        console.log('✅ Background sync success');
       } catch (e: any) {
-        console.error('❌ Auto-sync failed', e);
+        console.error('❌ Background sync failed', e);
       }
-    }, 60000); // 1 minute debounce
+    }, 5000); // 5 seconds debounce
 
     return () => clearTimeout(timer);
   }, [devotees.length, gDriveAutoSync, gDriveLinked, plan, setGDriveSetting]);
@@ -60,13 +62,33 @@ function App() {
         if (cache) {
           setCache(cache);
           
-          // Silent refresh in background on load
+          // Silent refresh in background
           verifyAccess(cache.email).then(newCache => {
             if (newCache && newCache.plan !== cache.plan) {
               setCache(newCache);
-              showToast(`Subscription updated to ${newCache.plan.toUpperCase()}!`, 'success');
             }
           }).catch(() => {});
+
+          // ── Silent Cloud Restore on Init if Local DB Empty ──
+          const currentDevotees = useDevoteeStore.getState().devotees;
+          if (currentDevotees.length === 0) {
+            try {
+              const token = await getGoogleAccessToken();
+              const folderId = await getFolderId(token);
+              const latestFileId = await fetchLatestBackup(token, folderId);
+              
+              if (latestFileId) {
+                console.log('📦 Found cloud backup, restoring silently...');
+                const blob = await downloadBackup(token, latestFileId);
+                await restoreFromBackupBlob(blob);
+                await loadDevotees();
+                await loadCategories();
+                showToast('Welcome back! Your data has been synced from the cloud.', 'success');
+              }
+            } catch (err) {
+              console.error("Cloud restore failed", err);
+            }
+          }
         }
       } catch (e) {
         console.error("Init error", e);
@@ -110,7 +132,7 @@ function App() {
         
         {/* Protected app routes */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<AppLayout />}>
+          <Route element={<GDriveGate><AppLayout /></GDriveGate>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/devotees" element={<DevoteesList />} />
             <Route path="/map" element={<MapHub />} />

@@ -11,7 +11,7 @@ import { getDB, PaymentEntry, Devotee } from '../db';
 // Use the Client ID from environment variables (set in .env file)
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-const DRIVE_FOLDER_NAME = 'Kattalai CMS Backups';
+const DRIVE_FOLDER_NAME = 'Kattalai Sync Data';
 let accessToken: string | null = null;
 
 /**
@@ -73,7 +73,7 @@ async function generateBackupBlob(): Promise<Blob> {
 /**
  * Finds or creates the "Kattalai CMS Backups" folder.
  */
-async function getFolderId(token: string): Promise<string> {
+export async function getFolderId(token: string): Promise<string> {
   // 1. Search for existing folder
   const query = encodeURIComponent(`name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
   const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
@@ -134,4 +134,27 @@ export async function syncToGoogleDrive(): Promise<string> {
   }
 
   return new Date().toLocaleString();
+}
+
+/**
+ * Finds the latest backup file in the sync folder.
+ */
+export async function fetchLatestBackup(token: string, folderId: string): Promise<string | null> {
+  const query = encodeURIComponent(`'${folderId}' in parents and name contains 'Kattalai_AutoBackup' and trashed = false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=createdTime desc&pageSize=1`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await res.json();
+  return (data.files && data.files.length > 0) ? data.files[0].id : null;
+}
+
+/**
+ * Downloads a file by ID and returns its content as a Blob.
+ */
+export async function downloadBackup(token: string, fileId: string): Promise<Blob> {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Download failed');
+  return await res.blob();
 }
