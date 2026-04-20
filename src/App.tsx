@@ -26,7 +26,7 @@ import { verifyAccess } from './auth';
 import { useToastStore } from './store';
 
 function App() {
-  const { setCache, setLoading, plan, user, isLoading } = useAuthStore();
+  const { setCache, setLoading, plan, user } = useAuthStore();
   const { showToast } = useToastStore();
   const { loadSettings, theme: appTheme, gDriveAutoSync, gDriveLinked, setGDriveSetting } = useSettingsStore();
   const { loadCategories } = useCategoryStore();

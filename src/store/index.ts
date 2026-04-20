@@ -7,7 +7,7 @@ import type { Devotee, Category, AuthCache, MessageTemplate } from '../db';
 
 // ── Auth Store ─────────────────────────────────────────────────
 interface AuthState {
-  user: { email: string; name: string; picture: string; real_expiry: string } | null;
+  user: { email: string; name: string; picture: string; real_expiry?: string } | null;
   cache: AuthCache | null;
   plan: 'free' | 'plus' | 'pro' | null;
   isLoading: boolean;
