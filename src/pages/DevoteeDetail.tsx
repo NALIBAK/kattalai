@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCategoryStore, useToastStore } from '../store';
+import { useCategoryStore, useToastStore, useAuthStore } from '../store';
+import { PlanGate } from '../components/PlanGate';
 import { getDevotee, deleteDevotee, Devotee, getSubscriptionStatus, getPaymentStatus } from '../db';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -133,40 +134,42 @@ export function DevoteeDetail() {
       </div>
 
       {/* Location */}
-      <div className="card mb-32 p-0" style={{ overflow: 'hidden' }}>
-        <div className="p-16">
-          <h4 className="text-gold mb-8">Location & Navigation</h4>
-          <div className="text-sm text-2 mb-16">📍 {devotee.address}, {devotee.city}</div>
+      <PlanGate requiredPlan="pro" featureName="GPS Map & Navigation">
+        <div className="card mb-32 p-0" style={{ overflow: 'hidden' }}>
+          <div className="p-16">
+            <h4 className="text-gold mb-8">Location & Navigation</h4>
+            <div className="text-sm text-2 mb-16">📍 {devotee.address}, {devotee.city}</div>
+          </div>
+          
+          {devotee.location_lat && devotee.location_lng ? (
+            <div>
+              <div style={{ height: 200, width: '100%', background: 'var(--surface-2)' }}>
+                <MapContainer 
+                  center={[devotee.location_lat, devotee.location_lng]} 
+                  zoom={15} 
+                  style={{ height: '100%', width: '100%', zIndex: 1 }}
+                  zoomControl={false}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Marker position={[devotee.location_lat, devotee.location_lng]} />
+                </MapContainer>
+              </div>
+              <div className="p-16" style={{ background: 'var(--surface-2)' }}>
+                <button className="btn btn-primary w-full" onClick={openGoogleMaps}>
+                  🧭 Navigate in Google Maps
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-16 pt-0">
+              <div className="empty-state p-16" style={{ border: '1px dashed var(--border)', borderRadius: 'var(--r-sm)' }}>
+                <div style={{ fontSize: '2rem' }}>📍</div>
+                <div className="text-sm">No GPS Location Set</div>
+              </div>
+            </div>
+          )}
         </div>
-        
-        {devotee.location_lat && devotee.location_lng ? (
-          <div>
-            <div style={{ height: 200, width: '100%', background: 'var(--surface-2)' }}>
-              <MapContainer 
-                center={[devotee.location_lat, devotee.location_lng]} 
-                zoom={15} 
-                style={{ height: '100%', width: '100%', zIndex: 1 }}
-                zoomControl={false}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <Marker position={[devotee.location_lat, devotee.location_lng]} />
-              </MapContainer>
-            </div>
-            <div className="p-16" style={{ background: 'var(--surface-2)' }}>
-              <button className="btn btn-primary w-full" onClick={openGoogleMaps}>
-                🧭 Navigate in Google Maps
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="p-16 pt-0">
-            <div className="empty-state p-16" style={{ border: '1px dashed var(--border)', borderRadius: 'var(--r-sm)' }}>
-              <div style={{ fontSize: '2rem' }}>📍</div>
-              <div className="text-sm">No GPS Location Set</div>
-            </div>
-          </div>
-        )}
-      </div>
+      </PlanGate>
 
     </div>
   );

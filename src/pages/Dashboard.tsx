@@ -104,9 +104,11 @@ export function Dashboard() {
           <button className="btn btn-primary" onClick={() => navigate('/devotees/new')}>
             ➕ Add Devotee
           </button>
-          <button className="btn btn-ghost" onClick={() => navigate('/map')} style={{ color: 'var(--gold)', borderColor: 'var(--gold)' }}>
-            🗺️ Open Map Hub
-          </button>
+          <PlanGate requiredPlan="pro" featureName="Map Hub Access">
+            <button className="btn btn-ghost" onClick={() => navigate('/map')} style={{ color: 'var(--gold)', borderColor: 'var(--gold)', width: '100%' }}>
+              🗺️ Open Map Hub
+            </button>
+          </PlanGate>
         </div>
 
         {/* WhatsApp Broadcast Status (Plus) */}

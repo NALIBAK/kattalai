@@ -132,7 +132,7 @@ export function Settings() {
       let city = '';
       let pincode = '';
       let gothram = '';
-      let country_code = '+91';
+      let country_code = ''; // Default to empty, detect if possible
 
       lines.forEach(line => {
         // FN (full name)
@@ -146,21 +146,28 @@ export function Settings() {
         }
         // TEL (phone number)
         if (/^TEL/i.test(line)) {
-          let num = line.replace(/^TEL[^:]*:/i, '').trim().replace(/[\s\-().]/g, '');
-          // Detect country code from number
+          let rawNum = line.replace(/^TEL[^:]*:/i, '').trim();
+          let num = rawNum.replace(/[\s\-().]/g, '');
+          
+          // 1. Detect country code explicitly if '+' is present
           if (num.startsWith('+')) {
-            // Try to extract CC from common codes
-            const ccMatch = num.match(/^(\+\d{1,3})/);
+            const ccMatch = num.match(/^(\+\d{1,4})/);
             if (ccMatch) {
               country_code = ccMatch[1];
-              num = num.slice(ccMatch[1].length); // strip the CC
+              num = num.slice(ccMatch[1].length);
             }
-          } else if (num.startsWith('0')) {
-            num = num.slice(1); // strip leading 0 (local format)
-          } else if (num.startsWith('91') && num.length === 12) {
-            country_code = '+91';
-            num = num.slice(2);
+          } 
+          // 2. Handle specific prefixes ONLY if the resulting number is NOT 10 digits
+          else if (num.length !== 10) {
+            if (num.startsWith('0')) {
+              num = num.slice(1);
+            } else if (num.startsWith('91') && num.length === 12) {
+              country_code = '+91';
+              num = num.slice(2);
+            }
           }
+          
+          // If after all logic it's empty, ignore
           if (num) phones.push(num);
         }
         // ADR (structured address)
@@ -230,7 +237,7 @@ export function Settings() {
           phone: c.phone,
           phone2: c.phone2 || undefined,
           phone3: c.phone3 || undefined,
-          country_code: c.country_code || '+91',
+          country_code: c.country_code || '',
           pincode: c.pincode || undefined,
           address: c.address || '',
           city: c.city || '',

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
+import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore, useAuthStore } from '../store';
+import { PlanGate } from '../components/PlanGate';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
 import { searchPincodes } from '../data/india_pincodes';
 
@@ -327,29 +328,31 @@ export function DevoteeForm() {
           <textarea className="form-input" value={formData.address} onChange={e => handleChange('address', e.target.value)} placeholder="e.g. 12 Car Street..." rows={2} />
         </div>
 
-        <div className="card-flat" style={{ background: formData.location_accurate ? 'rgba(14,203,129,0.05)' : 'var(--surface-2)' }}>
-          <div className="flex-between mb-8">
-            <label className="form-label mb-0">Location Tag 📍</label>
+        <PlanGate requiredPlan="pro" featureName="GPS Location Tagging">
+          <div className="card-flat" style={{ background: formData.location_accurate ? 'rgba(14,203,129,0.05)' : 'var(--surface-2)' }}>
+            <div className="flex-between mb-8">
+              <label className="form-label mb-0">Location Tag 📍</label>
+              {formData.location_lat && (
+                <span className={`badge ${formData.location_accurate ? 'badge-green' : 'badge-amber'}`}>
+                  {formData.location_accurate ? 'Exact GPS' : 'Approximate'}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-8 mt-8">
+              <button className="btn btn-sm btn-ghost flex-1" onClick={handleGeocode} disabled={isGeocoding}>
+                {isGeocoding ? '...' : '🌐 Auto-Locate'}
+              </button>
+              <button className="btn btn-sm flex-1" style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }} onClick={getGPS}>
+                📍 Use GPS (Exact)
+              </button>
+            </div>
             {formData.location_lat && (
-              <span className={`badge ${formData.location_accurate ? 'badge-green' : 'badge-amber'}`}>
-                {formData.location_accurate ? 'Exact GPS' : 'Approximate'}
-              </span>
+              <div className="text-xs text-muted mt-8">
+                Lat: {formData.location_lat.toFixed(4)}, Lng: {formData.location_lng?.toFixed(4)}
+              </div>
             )}
           </div>
-          <div className="flex gap-8 mt-8">
-            <button className="btn btn-sm btn-ghost flex-1" onClick={handleGeocode} disabled={isGeocoding}>
-              {isGeocoding ? '...' : '🌐 Auto-Locate'}
-            </button>
-            <button className="btn btn-sm flex-1" style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }} onClick={getGPS}>
-              📍 Use GPS (Exact)
-            </button>
-          </div>
-          {formData.location_lat && (
-            <div className="text-xs text-muted mt-8">
-              Lat: {formData.location_lat.toFixed(4)}, Lng: {formData.location_lng?.toFixed(4)}
-            </div>
-          )}
-        </div>
+        </PlanGate>
       </div>
 
       {/* ── 3. Subscription ── */}
