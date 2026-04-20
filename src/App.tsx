@@ -71,7 +71,7 @@ function App() {
 
           // ── Silent Cloud Restore on Init if Local DB Empty ──
           const currentDevotees = useDevoteeStore.getState().devotees;
-          if (currentDevotees.length === 0) {
+          if (gDriveLinked && currentDevotees.length === 0) {
             try {
               const token = await getGoogleAccessToken();
               const folderId = await getFolderId(token);
