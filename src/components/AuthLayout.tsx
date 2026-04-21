@@ -20,7 +20,7 @@ export function AuthLayout({ children, title, subtitle }: { children: ReactNode;
       </div>
 
       <div className="mt-16 text-muted text-xs" style={{ textAlign: 'center' }}>
-        KATTALAI MANAGEMENT v2.0
+        
       </div>
     </div>
   );
