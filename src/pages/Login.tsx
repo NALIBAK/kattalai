@@ -52,7 +52,7 @@ export function Login() {
   return (
     <AuthLayout 
       title="LOGIN" 
-      subtitle="Chidambaram Natarajar Temple Pooja Management"
+      subtitle="SIVA Chidambaram"
     >
       <div className="flex-col gap-16">
         <div id="google-signin-btn" className="flex-center w-full min-h-[44px]"></div>
