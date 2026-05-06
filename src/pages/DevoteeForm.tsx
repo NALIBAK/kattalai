@@ -4,6 +4,7 @@ import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } fr
 import { PlanGate } from '../components/PlanGate';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
 import { searchPincodes } from '../data/india_pincodes';
+import Tesseract from 'tesseract.js';
 
 // ── Country codes ─────────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
@@ -65,10 +66,12 @@ export function DevoteeForm() {
   });
 
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [pincodeQuery, setPincodeQuery] = useState('');
   const [pincodeSuggestions, setPincodeSuggestions] = useState<{ code: string; city: string; state: string }[]>([]);
   const [showPincodeDrop, setShowPincodeDrop] = useState(false);
   const pincodeRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isEdit && id) {
@@ -119,31 +122,115 @@ export function DevoteeForm() {
     setShowPincodeDrop(false);
   };
 
-  const handleGeocode = async () => {
-    if (!formData.address || !formData.city) {
-      showToast('Please enter Address and City first', 'error');
+  const handleGeocode = async (customAddress?: string, customCity?: string) => {
+    const addr = customAddress || formData.address;
+    const city = customCity || formData.city;
+
+    if (!addr) {
+      showToast('Please enter Address first', 'error');
       return;
     }
     try {
       setIsGeocoding(true);
-      const query = encodeURIComponent(`${formData.address}, ${formData.city}`);
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+      const query = encodeURIComponent(`${addr}${city ? `, ${city}` : ''}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1`);
       const data = await res.json();
       if (data && data.length > 0) {
+        const result = data[0];
+        
+        // Update form with found data to avoid spelling mistakes
+        const foundCity = result.address.city || result.address.town || result.address.village || city;
+        const foundPincode = result.address.postcode || formData.pincode;
+        
         setFormData(prev => ({
           ...prev,
-          location_lat: parseFloat(data[0].lat),
-          location_lng: parseFloat(data[0].lon),
+          address: result.display_name.split(',').slice(0, 3).join(',').trim(), // Cleaned up address
+          city: foundCity,
+          pincode: foundPincode,
+          location_lat: parseFloat(result.lat),
+          location_lng: parseFloat(result.lon),
           location_accurate: false,
         }));
-        showToast('Approximate location found!', 'success');
+        
+        if (foundPincode) setPincodeQuery(foundPincode);
+        
+        showToast('Address verified and location found!', 'success');
+        return result;
       } else {
-        showToast('Location not found. Try simplifying the address.', 'error');
+        if (!customAddress) showToast('Location not found. Try simplifying the address.', 'error');
       }
     } catch {
       showToast('Geocoding failed. Check network.', 'error');
     } finally {
       setIsGeocoding(false);
+    }
+  };
+
+  const handleScanClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    showToast('Extracting text from image...', 'info');
+
+    try {
+      const result = await Tesseract.recognize(file, 'eng+tam', {
+        logger: m => console.log(m)
+      });
+      
+      const text = result.data.text;
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+      
+      let name = '';
+      let phone = '';
+      let addressLines: string[] = [];
+
+      // Improved Regex for Indian Phones (10 digits, optional prefix)
+      const phoneRegex = /(?:\+91|0)?\s?[6-9]\d{4}\s?\d{5}/;
+
+      for (const line of lines) {
+        // Try to find phone
+        if (!phone && phoneRegex.test(line)) {
+          const match = line.match(phoneRegex);
+          if (match) phone = match[0].replace(/[\s+]/g, '').slice(-10);
+        } 
+        // Try to find Name (Usually short, capitalized, no symbols)
+        else if (!name && line.length < 40 && /^[A-Z]/.test(line) && !line.includes(',') && !/\d/.test(line)) {
+          name = line;
+        } 
+        // Rest is likely address
+        else {
+          addressLines.push(line);
+        }
+      }
+
+      const rawAddress = addressLines.join(', ');
+
+      // Update basic fields
+      setFormData(prev => ({
+        ...prev,
+        name: name || prev.name,
+        phone: phone || prev.phone,
+        address: rawAddress || prev.address
+      }));
+
+      showToast('Text extracted! Verifying address...', 'info');
+
+      // Try to verify the address automatically
+      if (rawAddress) {
+        await handleGeocode(rawAddress);
+      }
+
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to scan image', 'error');
+    } finally {
+      setIsScanning(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -199,7 +286,27 @@ export function DevoteeForm() {
       <div className="card mb-16">
         <h4 className="mb-16 text-gold">1. Personal Details</h4>
         <div className="form-group">
-          <label className="form-label">Full Name *</label>
+          <div className="flex-between mb-8">
+            <label className="form-label mb-0">Full Name *</label>
+            <PlanGate requiredPlan="pro" featureName="Photo Scan">
+              <button 
+                className="btn btn-xs btn-ghost" 
+                onClick={handleScanClick}
+                disabled={isScanning}
+                style={{ color: 'var(--gold)', borderColor: 'var(--gold)' }}
+              >
+                {isScanning ? '⌛ Scanning...' : '📷 Scan Card/Paper'}
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                accept="image/*" 
+                capture="environment"
+                onChange={handleFileChange}
+              />
+            </PlanGate>
+          </div>
           <input className="form-input" value={formData.name} onChange={e => handleChange('name', e.target.value)} placeholder="e.g. Rajan Murugesan" />
         </div>
 
@@ -324,7 +431,20 @@ export function DevoteeForm() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Street Address</label>
+          <div className="flex-between mb-8">
+            <label className="form-label mb-0">Street Address</label>
+            {formData.address && (
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formData.address + ' ' + (formData.city || ''))}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-gold"
+                style={{ textDecoration: 'underline' }}
+              >
+                Check on Google Maps
+              </a>
+            )}
+          </div>
           <textarea className="form-input" value={formData.address} onChange={e => handleChange('address', e.target.value)} placeholder="e.g. 12 Car Street..." rows={2} />
         </div>
 
