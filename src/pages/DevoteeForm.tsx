@@ -183,34 +183,64 @@ export function DevoteeForm() {
       });
       
       const text = result.data.text;
-      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+      // Clean up common OCR noise characters
+      const lines = text.split('\n')
+        .map(l => l.trim().replace(/[|_*~]/g, ''))
+        .filter(l => l.length > 3);
       
       let name = '';
       let phone = '';
-      let addressLines: string[] = [];
+      let addressParts: string[] = [];
 
-      // Improved Regex for Indian Phones (10 digits, optional prefix)
+      // 1. Phone Regex (India focus)
       const phoneRegex = /(?:\+91|0)?\s?[6-9]\d{4}\s?\d{5}/;
+      
+      // 2. Keywords that strongly suggest a line is part of an address
+      const addrKeywords = ['street', 'road', ' st', ' rd', 'nagar', 'puram', 'no:', 'door', 'floor', 'city', 'town', 'pincode', 'dist', 'taluk', 'india', 'opposite', 'near', 'beside'];
+      
+      // 3. Junk filters
+      const isJunk = (l: string) => {
+        const lower = l.toLowerCase();
+        return lower.includes('www.') || lower.includes('http') || lower.includes('@') || lower.includes('.com') || lower.includes('.in');
+      };
 
       for (const line of lines) {
-        // Try to find phone
+        if (isJunk(line)) continue;
+
+        const lowerLine = line.toLowerCase();
+
+        // Extract Phone
         if (!phone && phoneRegex.test(line)) {
           const match = line.match(phoneRegex);
           if (match) phone = match[0].replace(/[\s+]/g, '').slice(-10);
-        } 
-        // Try to find Name (Usually short, capitalized, no symbols)
-        else if (!name && line.length < 40 && /^[A-Z]/.test(line) && !line.includes(',') && !/\d/.test(line)) {
+          continue;
+        }
+
+        // Identify Address lines by keywords or pincode format
+        const hasAddrKeyword = addrKeywords.some(k => lowerLine.includes(k));
+        const hasPincode = /\d{6}/.test(line);
+
+        if (hasAddrKeyword || hasPincode) {
+          addressParts.push(line);
+          continue;
+        }
+
+        // Identify Name
+        // Candidates: Starts with title, or is relatively short and mostly letters
+        const hasTitle = /^(Mr|Ms|Mrs|Dr|Shri|Smt)\.?\s/i.test(line);
+        const isShortAlpha = line.length < 35 && /^[A-Z\u0B80-\u0BFF]/.test(line) && !/\d/.test(line);
+
+        if (!name && (hasTitle || isShortAlpha)) {
           name = line;
-        } 
-        // Rest is likely address
-        else {
-          addressLines.push(line);
+        } else if (line.length > 5) {
+          // Fallback: If it's not a name but long enough, it's likely a leftover address line
+          addressParts.push(line);
         }
       }
 
-      const rawAddress = addressLines.join(', ');
+      const rawAddress = addressParts.join(', ');
 
-      // Update basic fields
+      // Update fields (only if we found something new)
       setFormData(prev => ({
         ...prev,
         name: name || prev.name,
