@@ -459,7 +459,7 @@ export function DevoteeForm() {
               )}
             </div>
             <div className="flex gap-8 mt-8">
-              <button className="btn btn-sm btn-ghost flex-1" onClick={handleGeocode} disabled={isGeocoding}>
+              <button className="btn btn-sm btn-ghost flex-1" onClick={() => handleGeocode()} disabled={isGeocoding}>
                 {isGeocoding ? '...' : '🌐 Auto-Locate'}
               </button>
               <button className="btn btn-sm flex-1" style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }} onClick={getGPS}>
