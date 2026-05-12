@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getDB, Devotee, PaymentEntry, MessageTemplate, upsertDevotee } from '../db';
-import { PlanGate } from '../components/PlanGate';
 import { restoreFromBackupBlob } from '../utils/backup';
 import { allowPush } from '../utils/syncLock';
 import JSZip from 'jszip';
@@ -13,9 +12,9 @@ export function Settings() {
   
   // Stores
   const { 
-    theme, defaultAmount, templeName, 
+    theme, defaultAmount, 
     messageTemplates,
-    setTheme, setDefaultAmount, setTempleName,
+    setTheme, setDefaultAmount,
     addTemplate, updateTemplate, removeTemplate 
   } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
@@ -349,28 +348,20 @@ export function Settings() {
             <h4 className="text-gold mb-16">Preferences</h4>
             <div className="flex-between mb-16">
               <div>
-                <div className="fw-600">Dark Mode</div>
-                <div className="text-sm text-2">Toggle between dark and light themes</div>
+                <div className="fw-600">Theme</div>
               </div>
-              <label className="switch">
-                <input 
-                  type="checkbox" 
-                  checked={theme === 'dark'} 
-                  onChange={e => setTheme(e.target.checked ? 'dark' : 'light')} 
-                />
-                <span className="slider round"></span>
-              </label>
+              <button 
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+              >
+                {theme === 'dark' ? '🌙' : '☀️'}
+              </button>
             </div>
             
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Default Annual Amount (₹)</label>
-                <input className="form-input" type="number" value={defaultAmount} onChange={e => setDefaultAmount(Number(e.target.value) || 0)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Temple Display Name</label>
-                <input className="form-input" value={templeName} onChange={e => setTempleName(e.target.value)} />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Default Annual Amount (₹)</label>
+              <input className="form-input" type="number" value={defaultAmount} onChange={e => setDefaultAmount(Number(e.target.value) || 0)} />
             </div>
           </div>
 
@@ -462,15 +453,7 @@ export function Settings() {
           </div>
 
 
-          <PlanGate requiredPlan="pro" featureName="Advanced Reports">
-            <div className="card mt-24 flex gap-12" style={{ alignItems: 'center' }}>
-              <div style={{ fontSize: '2rem' }}>📊</div>
-              <div>
-                <div className="fw-600">Advanced Analytics</div>
-                <div className="text-sm text-2">Detailed collections and category trends coming soon.</div>
-              </div>
-            </div>
-          </PlanGate>
+
 
         </div>
       </div>
