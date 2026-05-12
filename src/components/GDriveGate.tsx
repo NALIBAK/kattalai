@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
-import { getGoogleAccessToken, syncToGoogleDrive, fetchLatestBackup, downloadBackup } from '../utils/googleDrive';
+import { getGoogleAccessToken, syncToGoogleDrive, fetchLatestBackup, fetchLegacyBackup, downloadBackup } from '../utils/googleDrive';
 import { restoreFromBackupBlob } from '../utils/backup';
 
 export function GDriveGate({ children }: { children: React.ReactNode }) {
@@ -21,7 +21,16 @@ export function GDriveGate({ children }: { children: React.ReactNode }) {
 
       // Step 2: Check if a backup exists on Drive (new device scenario)
       setLinkStep('checking');
-      const existingFileId = await fetchLatestBackup(token);
+      let existingFileId = await fetchLatestBackup(token);
+      let isLegacy = false;
+
+      if (!existingFileId) {
+        existingFileId = await fetchLegacyBackup(token);
+        if (existingFileId) {
+          isLegacy = true;
+          console.log('[GDriveGate] Found legacy backup from older version');
+        }
+      }
 
       if (existingFileId && devotees.length === 0) {
         // ── NEW DEVICE: restore existing backup ──────────────────
@@ -32,6 +41,12 @@ export function GDriveGate({ children }: { children: React.ReactNode }) {
         await refreshDevotees();
         await loadCategories();
         showToast('✅ All your data has been restored from cloud!', 'success');
+
+        if (isLegacy) {
+          // Re-upload to the new appData folder so it works flawlessly next time
+          setLinkStep('syncing');
+          await syncToGoogleDrive();
+        }
       } else if (existingFileId && devotees.length > 0) {
         // ── EXISTING DEVICE: has both local + cloud — merge by syncing ──
         setLinkStep('syncing');

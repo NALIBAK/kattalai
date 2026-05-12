@@ -39,7 +39,8 @@ export async function getGoogleAccessToken(): Promise<string> {
     const client = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       // drive.appdata: cross-device hidden folder, user's own data only
-      scope: 'https://www.googleapis.com/auth/drive.appdata',
+      // drive.file: needed to find legacy backups from older app versions
+      scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
       callback: (response: any) => {
         if (response.error || response.error_description) {
           reject(new Error(response.error_description || response.error));
@@ -109,6 +110,36 @@ export async function fetchLatestBackup(token: string): Promise<string | null> {
   }
   const data = await res.json();
   return data.files && data.files.length > 0 ? data.files[0].id : null;
+}
+
+/**
+ * Searches for the old legacy backup format stored in the user's main Drive using drive.file scope.
+ * Used to migrate existing users to the new appData system smoothly.
+ */
+export async function fetchLegacyBackup(token: string): Promise<string | null> {
+  // 1. Find the legacy folder
+  const folderQuery = encodeURIComponent(`name = 'Kattalai Sync Data' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+  const folderRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${folderQuery}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!folderRes.ok) return null;
+  const folderData = await folderRes.json();
+  
+  if (!folderData.files || folderData.files.length === 0) {
+    return null;
+  }
+  
+  const folderId = folderData.files[0].id;
+  
+  // 2. Find the latest backup file in that folder
+  const fileQuery = encodeURIComponent(`'${folderId}' in parents and name contains 'Kattalai_AutoBackup' and trashed = false`);
+  const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${fileQuery}&orderBy=createdTime desc&pageSize=1`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!fileRes.ok) return null;
+  const fileData = await fileRes.json();
+  
+  return (fileData.files && fileData.files.length > 0) ? fileData.files[0].id : null;
 }
 
 /**
