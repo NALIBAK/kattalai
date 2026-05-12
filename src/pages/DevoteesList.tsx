@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getSubscriptionStatus, getPaymentStatus, deleteDevotee } from '../db';
+import { allowPush } from '../utils/syncLock';
 
 export function DevoteesList() {
   const navigate = useNavigate();
@@ -109,6 +110,7 @@ export function DevoteesList() {
     }
     
     showToast(`Deleted ${selectedIds.size} devotees`, 'success');
+    allowPush(); // Unlock auto-push — user made a genuine edit
     setIsSelectMode(false);
     setSelectedIds(new Set());
     load();

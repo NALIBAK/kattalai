@@ -4,6 +4,7 @@ import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore, useSett
 import { verifyAccess } from '../auth';
 import { getGoogleAccessToken, fetchLatestBackup, fetchLegacyBackup, downloadBackup, syncToGoogleDrive } from '../utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from '../utils/backup';
+import { blockPush } from '../utils/syncLock';
 import type { Devotee } from '../db';
 
 export function Profile() {
@@ -104,7 +105,7 @@ export function Profile() {
       showToast('Pushing to cloud...', 'info');
       const time = await syncToGoogleDrive(false);
       await setGDriveSetting('gDriveLastSync', time);
-      showToast('✅ Push successful!', 'success');
+      showToast('✅ Push successful! Cloud now has your local data.', 'success');
     } catch(e: any) {
       showToast(e.message || 'Push failed', 'error');
     } finally {
@@ -114,6 +115,7 @@ export function Profile() {
 
   const handlePull = async () => {
     setIsPulling(true);
+    blockPush(); // Prevent auto-push from racing with this pull
     try {
       showToast('Connecting to Google Drive...', 'info');
       const token = await getGoogleAccessToken();
@@ -162,7 +164,7 @@ export function Profile() {
         await setGDriveSetting('gDriveLastSync', existing.modifiedTime || new Date().toISOString());
       }
       
-      showToast('✅ Pull successful!', 'success');
+      showToast('✅ Pull successful! This device now matches the cloud.', 'success');
 
       if (isLegacy) {
         showToast('Migrating legacy backup to new format...', 'info');
@@ -172,6 +174,7 @@ export function Profile() {
       showToast(e.message || 'Pull failed', 'error');
     } finally {
       setIsPulling(false);
+      // Keep push blocked — user must make a real edit to re-enable it
     }
   };
 

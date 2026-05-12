@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCategoryStore, useToastStore } from '../store';
 import { PlanGate } from '../components/PlanGate';
 import { getDevotee, deleteDevotee, Devotee, getSubscriptionStatus, getPaymentStatus } from '../db';
+import { allowPush } from '../utils/syncLock';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -39,6 +40,7 @@ export function DevoteeDetail() {
   const handleDelete = () => {
     if (window.confirm(`Are you sure you want to delete ${devotee.name}? This will delete all their payments and family member records as well. This action cannot be undone.`)) {
       deleteDevotee(devotee.id).then(() => {
+        allowPush(); // Unlock auto-push — user made a genuine edit
         showToast('Devotee deleted', 'success');
         navigate('/devotees');
       });

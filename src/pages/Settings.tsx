@@ -4,6 +4,7 @@ import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } fr
 import { getDB, Devotee, PaymentEntry, MessageTemplate, upsertDevotee } from '../db';
 import { PlanGate } from '../components/PlanGate';
 import { restoreFromBackupBlob } from '../utils/backup';
+import { allowPush } from '../utils/syncLock';
 import JSZip from 'jszip';
 
 export function Settings() {
@@ -255,6 +256,7 @@ export function Settings() {
         await upsertDevotee(devotee);
       }
       await refreshDevotees();
+      allowPush(); // Unlock auto-push
       showToast(`✅ Imported ${toImport.length} contacts as devotees!`, 'success');
       setVcfModalOpen(false);
       setVcfContacts([]);
@@ -325,6 +327,7 @@ export function Settings() {
       await restoreFromBackupBlob(file);
       await refreshDevotees();
       await loadCategories();
+      allowPush(); // Unlock auto-push
       showToast('Backup restored successfully!', 'success');
 
     } catch (err: any) {

@@ -18,8 +18,9 @@ import { BulkImport } from './pages/BulkImport';
 import { MapHub } from './pages/MapHub';
 import { ContactDeveloper } from './pages/ContactDeveloper';
 import { syncToGoogleDrive, getGoogleAccessToken, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
-import { restoreFromBackupBlob } from './utils/backup';
+import { restoreFromBackupBlob, previewBackupBlob } from './utils/backup';
 import { GDriveGate } from './components/GDriveGate';
+import { isPushBlocked, blockPush } from './utils/syncLock';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
@@ -36,22 +37,19 @@ function App() {
   const { devotees, load: loadDevotees } = useDevoteeStore();
 
   const [cloudUpdateAvailable, setCloudUpdateAvailable] = useState(false);
+  const [cloudDevoteeCount, setCloudDevoteeCount] = useState<number | null>(null);
   const [syncPaused, setSyncPaused] = useState(false);
   const isPullingRef = useRef(false);
-  const isInitialMountRef = useRef(true);
 
   useEffect(() => {
-    // Skip the very first render trigger (which happens during loadDevotees)
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false;
-      return;
-    }
-
     // ── Mandatory Auto Sync Logic (Push to Cloud) ──
-    // Block pushing if a conflict is waiting to be resolved
-    if (!gDriveLinked || devotees.length === 0 || isPullingRef.current || cloudUpdateAvailable) return;
+    // ONLY pushes when the user has actually edited something.
+    // isPushBlocked() returns true on app load and after any pull/restore.
+    if (!gDriveLinked || devotees.length === 0 || isPullingRef.current || cloudUpdateAvailable || isPushBlocked()) return;
 
     const timer = setTimeout(async () => {
+      // Double-check the lock hasn't been set while we waited
+      if (isPushBlocked() || isPullingRef.current) return;
       try {
         const time = await syncToGoogleDrive(true);
         await setGDriveSetting('gDriveLastSync', time);
@@ -85,6 +83,12 @@ function App() {
            const localTime = useSettingsStore.getState().gDriveLastSync;
            // If we have no local sync time, OR cloud is newer, show banner
            if (!localTime || existing.modifiedTime > localTime) {
+             // Fetch cloud devotee count for the banner
+             try {
+               const blob = await downloadBackup(token, existing.id);
+               const preview = await previewBackupBlob(blob);
+               setCloudDevoteeCount(preview.devoteeCount);
+             } catch { setCloudDevoteeCount(null); }
              setCloudUpdateAvailable(true);
            }
         }
@@ -107,6 +111,7 @@ function App() {
   const handleCloudUpdate = async () => {
     setCloudUpdateAvailable(false);
     isPullingRef.current = true;
+    blockPush(); // Lock auto-push
     showToast('Downloading updates...', 'info');
     try {
       const token = await getGoogleAccessToken(false);
@@ -117,12 +122,13 @@ function App() {
         await loadDevotees();
         await loadCategories();
         await setGDriveSetting('gDriveLastSync', existing.modifiedTime);
-        showToast('✅ App synced with other device!', 'success');
+        showToast('✅ App synced with cloud!', 'success');
       }
     } catch (e: any) {
       showToast('Update failed', 'error');
     } finally {
-      setTimeout(() => { isPullingRef.current = false; }, 2000);
+      // Keep push blocked for 15 seconds to prevent race conditions
+      setTimeout(() => { isPullingRef.current = false; }, 15000);
     }
   };
 
@@ -179,33 +185,40 @@ function App() {
 
   return (
     <BrowserRouter basename="/kattalai">
-      {/* ── NEW: Cloud Update Banner (Conflict Resolver) ── */}
+      {/* ── Cloud Update Banner (Conflict Resolver) ── */}
       {cloudUpdateAvailable && !syncPaused && (
         <div style={{
           background: 'var(--gold)', color: '#000', padding: '16px',
           textAlign: 'center', fontWeight: 600, fontSize: '0.9rem',
           zIndex: 10000, position: 'relative'
         }}>
-          <div className="mb-8" style={{ marginBottom: '12px' }}>☁️ Difference detected! Another device updated the cloud.</div>
+          <div style={{ marginBottom: '12px' }}>
+            ☁️ Cloud has a different version
+          </div>
+          <div style={{ marginBottom: '12px', fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.5 }}>
+            📱 <b>This device:</b> {devotees.length} devotees
+            <br/>
+            ☁️ <b>Cloud:</b> {cloudDevoteeCount !== null ? `${cloudDevoteeCount} devotees` : 'unknown count'}
+          </div>
           <div className="flex-center gap-12 text-sm">
              <button 
                 onClick={handleCloudUpdate}
-                style={{ background: '#000', color: 'var(--gold)', border: 'none', padding: '6px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+                style={{ background: '#000', color: 'var(--gold)', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
              >
-                Keep Cloud Data
+                ☁️ Use Cloud ({cloudDevoteeCount ?? '?'})
              </button>
              <button 
                 onClick={async () => {
                    setCloudUpdateAvailable(false);
                    showToast('Pushing local data to cloud...', 'info');
                    try {
-                     const time = await syncToGoogleDrive(true);
+                     const time = await syncToGoogleDrive(false);
                      await setGDriveSetting('gDriveLastSync', time);
                    } catch(e) {}
                 }}
-                style={{ background: 'transparent', color: '#000', border: '1px solid #000', padding: '5px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+                style={{ background: 'transparent', color: '#000', border: '1px solid #000', padding: '7px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
              >
-                Keep Local Data
+                📱 Use Local ({devotees.length})
              </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToastStore, useDevoteeStore } from '../store';
 import { getDevotee, getPaymentHistory, addPayment, deletePayment, upsertDevotee, Devotee, PaymentEntry, generateId } from '../db';
+import { allowPush } from '../utils/syncLock';
 
 export function DevoteePayments() {
   const { id } = useParams();
@@ -51,6 +52,7 @@ export function DevoteePayments() {
     });
     
     showToast('Payment recorded successfully', 'success');
+    allowPush(); // Unlock auto-push
     setIsAdding(false);
     setAmount('');
     setNote('');
@@ -62,6 +64,7 @@ export function DevoteePayments() {
   const handleDelete = async (payId: string) => {
     if (window.confirm('Delete this payment record?')) {
       await deletePayment(payId, id!);
+      allowPush(); // Unlock auto-push
       showToast('Payment deleted', 'info');
       await loadData();
       await refresh();
@@ -82,6 +85,7 @@ export function DevoteePayments() {
       };
       
       await upsertDevotee(updated);
+      allowPush(); // Unlock auto-push
       showToast('Subscription renewed successfully! 🎉', 'success');
       await loadData();
       await refresh();

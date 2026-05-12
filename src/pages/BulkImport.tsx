@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
 import { upsertDevotee, generateId, upsertCategory } from '../db';
 import type { Devotee, Category } from '../db';
+import { allowPush } from '../utils/syncLock';
 import { parseBulkText, suggestCategoryForCity } from '../utils/parseBulkText';
 import type { ParsedRecord } from '../utils/parseBulkText';
 import { preprocessImageForOCR } from '../utils/imagePreprocess';
@@ -238,6 +239,7 @@ export function BulkImport() {
         await upsertDevotee(devotee);
       }
       await refresh();
+      allowPush(); // Unlock auto-push — user made a genuine edit
       showToast(`✅ ${toSave.length} devotees imported!`, 'success');
       navigate('/devotees');
     } catch {

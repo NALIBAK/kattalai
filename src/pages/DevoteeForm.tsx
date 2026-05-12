@@ -4,6 +4,7 @@ import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } fr
 import { PlanGate } from '../components/PlanGate';
 import { OcrReviewModal, OcrResult } from '../components/OcrReviewModal';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
+import { allowPush } from '../utils/syncLock';
 import { searchPincodes } from '../data/india_pincodes';
 import { preprocessImageForOCR } from '../utils/imagePreprocess';
 import Tesseract from 'tesseract.js';
@@ -368,6 +369,7 @@ export function DevoteeForm() {
 
     await upsertDevotee(newDevotee);
     await refresh();
+    allowPush(); // Unlock auto-push — user made a genuine edit
     showToast('Devotee saved', 'success');
     navigate(isEdit ? `/devotees/${devId}` : '/devotees');
   };
