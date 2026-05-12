@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
 import { PlanGate } from '../components/PlanGate';
+import { OcrReviewModal, OcrResult } from '../components/OcrReviewModal';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
 import { searchPincodes } from '../data/india_pincodes';
+import { preprocessImageForOCR } from '../utils/imagePreprocess';
 import Tesseract from 'tesseract.js';
 
 // ── Country codes ─────────────────────────────────────────────────────────────
@@ -67,6 +69,9 @@ export function DevoteeForm() {
 
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStep, setScanStep] = useState<'idle'|'preprocessing'|'recognizing'|'done'>('idle');
+  const [ocrReview, setOcrReview] = useState<OcrResult | null>(null);
+  const [ocrPreviewUrl, setOcrPreviewUrl] = useState<string>('');
   const [pincodeQuery, setPincodeQuery] = useState('');
   const [pincodeSuggestions, setPincodeSuggestions] = useState<{ code: string; city: string; state: string }[]>([]);
   const [showPincodeDrop, setShowPincodeDrop] = useState(false);
@@ -175,93 +180,161 @@ export function DevoteeForm() {
     if (!file) return;
 
     setIsScanning(true);
-    showToast('Extracting text from image...', 'info');
+    setScanStep('preprocessing');
+    showToast('Preprocessing image for better accuracy...', 'info');
 
     try {
-      const result = await Tesseract.recognize(file, 'eng+tam', {
-        logger: m => console.log(m)
-      });
-      
-      const text = result.data.text;
-      // Clean up common OCR noise characters
-      const lines = text.split('\n')
-        .map(l => l.trim().replace(/[|_*~]/g, ''))
-        .filter(l => l.length > 3);
-      
+      // ── Step 1: Canvas preprocessing ─────────────────────────
+      const processedBlob = await preprocessImageForOCR(file);
+
+      // Create preview URL from the preprocessed image (shown in review modal)
+      const previewUrl = URL.createObjectURL(processedBlob);
+      setOcrPreviewUrl(previewUrl);
+
+      // ── Step 2: Tesseract OCR (Tamil + English) ───────────────
+      setScanStep('recognizing');
+      showToast('Reading text (Tamil + English)...', 'info');
+
+      const result = await Tesseract.recognize(
+        processedBlob,
+        'eng+tam',
+        { logger: m => console.log('[OCR]', m.status, m.progress) }
+      );
+
+      const rawText = result.data.text;
+
+      // ── Step 3: Parse extracted text ──────────────────────────
+      const lines = rawText
+        .split('\n')
+        .map(l => l.trim().replace(/[|_*~`^]/g, '').trim())
+        .filter(l => l.length > 2);
+
       let name = '';
       let phone = '';
-      let addressParts: string[] = [];
+      let pincode = '';
+      let city = '';
+      const addressParts: string[] = [];
 
-      // 1. Phone Regex (India focus)
       const phoneRegex = /(?:\+91|0)?\s?[6-9]\d{4}\s?\d{5}/;
-      
-      // 2. Keywords that strongly suggest a line is part of an address
-      const addrKeywords = ['street', 'road', ' st', ' rd', 'nagar', 'puram', 'no:', 'door', 'floor', 'city', 'town', 'pincode', 'dist', 'taluk', 'india', 'opposite', 'near', 'beside'];
-      
-      // 3. Junk filters
+      const pincodeRegex = /\b\d{6}\b/;
+
+      const addrKeywords = [
+        'street','road',' st ',' rd ','nagar','puram','colony','layout',
+        'no:','door','floor','town','dist','taluk','india','opposite',
+        'near','beside','main','cross','avenue','lane','bazaar','bazar',
+        'salai','theru','veedhi',
+      ];
+
       const isJunk = (l: string) => {
-        const lower = l.toLowerCase();
-        return lower.includes('www.') || lower.includes('http') || lower.includes('@') || lower.includes('.com') || lower.includes('.in');
+        const lo = l.toLowerCase();
+        return lo.includes('www.') || lo.includes('http') || lo.includes('@')
+          || lo.includes('.com') || lo.includes('.in') || lo.includes('.org');
       };
 
       for (const line of lines) {
         if (isJunk(line)) continue;
+        const lo = line.toLowerCase();
 
-        const lowerLine = line.toLowerCase();
-
-        // Extract Phone
+        // Phone
         if (!phone && phoneRegex.test(line)) {
-          const match = line.match(phoneRegex);
-          if (match) phone = match[0].replace(/[\s+]/g, '').slice(-10);
+          const m = line.match(phoneRegex);
+          if (m) phone = m[0].replace(/[\s+]/g, '').replace(/^91/, '').slice(-10);
           continue;
         }
 
-        // Identify Address lines by keywords or pincode format
-        const hasAddrKeyword = addrKeywords.some(k => lowerLine.includes(k));
-        const hasPincode = /\d{6}/.test(line);
+        // Pincode (6-digit standalone)
+        if (!pincode && pincodeRegex.test(line)) {
+          const m = line.match(pincodeRegex);
+          if (m) {
+            pincode = m[0];
+            // Look up city from pincode data
+            const found = searchPincodes(pincode);
+            if (found.length > 0) city = found[0].city;
+            addressParts.push(line);
+            continue;
+          }
+        }
 
-        if (hasAddrKeyword || hasPincode) {
+        // Address keywords
+        const hasAddrKeyword = addrKeywords.some(k => lo.includes(k));
+        if (hasAddrKeyword) {
           addressParts.push(line);
           continue;
         }
 
-        // Identify Name
-        // Candidates: Starts with title, or is relatively short and mostly letters
-        const hasTitle = /^(Mr|Ms|Mrs|Dr|Shri|Smt)\.?\s/i.test(line);
-        const isShortAlpha = line.length < 35 && /^[A-Z\u0B80-\u0BFF]/.test(line) && !/\d/.test(line);
+        // Name: short line, starts with capital or Tamil, no digits
+        const hasTitle = /^(Mr|Ms|Mrs|Dr|Shri|Smt|Thiru|Tmt)\.?\s/i.test(line);
+        const isShortAlpha = line.length < 40
+          && /^[A-Z\u0B80-\u0BFF]/.test(line)
+          && !/\d/.test(line)
+          && line.split(' ').length <= 5;
 
         if (!name && (hasTitle || isShortAlpha)) {
           name = line;
-        } else if (line.length > 5) {
-          // Fallback: If it's not a name but long enough, it's likely a leftover address line
+        } else if (line.length > 4) {
           addressParts.push(line);
         }
       }
 
-      const rawAddress = addressParts.join(', ');
-
-      // Update fields (only if we found something new)
-      setFormData(prev => ({
-        ...prev,
-        name: name || prev.name,
-        phone: phone || prev.phone,
-        address: rawAddress || prev.address
-      }));
-
-      showToast('Text extracted! Verifying address...', 'info');
-
-      // Try to verify the address automatically
-      if (rawAddress) {
-        await handleGeocode(rawAddress);
-      }
+      // ── Step 4: Show review modal — user confirms before filling ──
+      setScanStep('done');
+      setOcrReview({
+        name,
+        phone,
+        address: addressParts.join(', '),
+        pincode,
+        city,
+        rawText,
+      });
 
     } catch (err) {
       console.error(err);
-      showToast('Failed to scan image', 'error');
+      showToast('Failed to scan image. Try a clearer photo.', 'error');
     } finally {
       setIsScanning(false);
+      setScanStep('idle');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleOcrConfirm = async (edited: OcrResult) => {
+    // Fill only non-empty fields from OCR result
+    setFormData(prev => ({
+      ...prev,
+      name:    edited.name    || prev.name,
+      phone:   edited.phone   || prev.phone,
+      address: edited.address || prev.address,
+      pincode: edited.pincode || prev.pincode,
+      city:    edited.city    || prev.city,
+    }));
+
+    if (edited.pincode) setPincodeQuery(edited.pincode);
+
+    // Clean up preview URL
+    if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl);
+    setOcrPreviewUrl('');
+    setOcrReview(null);
+
+    showToast('Form filled from scan! Verify address on map.', 'success');
+
+    // Auto-geocode if we have an address
+    if (edited.address) {
+      await handleGeocode(edited.address, edited.city);
+    }
+  };
+
+  const handleOcrCancel = () => {
+    if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl);
+    setOcrPreviewUrl('');
+    setOcrReview(null);
+    showToast('Scan discarded', 'info');
+  };
+
+  const scanButtonLabel = () => {
+    if (!isScanning) return '📷 Scan Card/Paper';
+    if (scanStep === 'preprocessing') return '🔧 Enhancing image...';
+    if (scanStep === 'recognizing')   return '🔍 Reading text...';
+    return '⌛ Scanning...';
   };
 
   const getGPS = () => {
@@ -304,6 +377,15 @@ export function DevoteeForm() {
 
   return (
     <div>
+      {/* OCR Review Modal */}
+      {ocrReview && (
+        <OcrReviewModal
+          result={ocrReview}
+          previewUrl={ocrPreviewUrl}
+          onConfirm={handleOcrConfirm}
+          onCancel={handleOcrCancel}
+        />
+      )}
       <div className="section flex-between mb-24">
         <div className="flex-center gap-12">
           <button className="btn-icon" onClick={() => navigate(-1)}>🔙</button>
@@ -325,13 +407,13 @@ export function DevoteeForm() {
                 disabled={isScanning}
                 style={{ color: 'var(--gold)', borderColor: 'var(--gold)' }}
               >
-                {isScanning ? '⌛ Scanning...' : '📷 Scan Card/Paper'}
+                {scanButtonLabel()}
               </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
-                accept="image/*" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="image/*"
                 capture="environment"
                 onChange={handleFileChange}
               />
