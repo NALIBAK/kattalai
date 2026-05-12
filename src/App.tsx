@@ -38,10 +38,18 @@ function App() {
   const [cloudUpdateAvailable, setCloudUpdateAvailable] = useState(false);
   const [syncPaused, setSyncPaused] = useState(false);
   const isPullingRef = useRef(false);
+  const isInitialMountRef = useRef(true);
 
   useEffect(() => {
+    // Skip the very first render trigger (which happens during loadDevotees)
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
     // ── Mandatory Auto Sync Logic (Push to Cloud) ──
-    if (!gDriveLinked || devotees.length === 0 || isPullingRef.current) return;
+    // Block pushing if a conflict is waiting to be resolved
+    if (!gDriveLinked || devotees.length === 0 || isPullingRef.current || cloudUpdateAvailable) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -59,7 +67,7 @@ function App() {
     }, 5000); // 5 seconds debounce
 
     return () => clearTimeout(timer);
-  }, [devotees, gDriveAutoSync, gDriveLinked, plan, setGDriveSetting]); // Dependency changed from devotees.length to devotees
+  }, [devotees, gDriveAutoSync, gDriveLinked, plan, setGDriveSetting, cloudUpdateAvailable]);
 
   useEffect(() => {
     // ── Real-time Polling (Pull from Cloud) ──
@@ -75,8 +83,8 @@ function App() {
         const existing = await fetchLatestBackup(token);
         if (existing) {
            const localTime = useSettingsStore.getState().gDriveLastSync;
-           // If cloud file was modified AFTER our last sync, prompt user
-           if (localTime && existing.modifiedTime > localTime) {
+           // If we have no local sync time, OR cloud is newer, show banner
+           if (!localTime || existing.modifiedTime > localTime) {
              setCloudUpdateAvailable(true);
            }
         }
@@ -91,7 +99,8 @@ function App() {
       }
     };
 
-    const interval = setInterval(checkCloud, 60000); // Check every 60 seconds
+    checkCloud(); // Fire immediately on app load
+    const interval = setInterval(checkCloud, 60000); // Then every 60 seconds
     return () => clearInterval(interval);
   }, [gDriveLinked, user]);
 
