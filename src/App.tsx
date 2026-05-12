@@ -184,8 +184,7 @@ function App() {
         <div style={{
           background: 'var(--gold)', color: '#000', padding: '16px',
           textAlign: 'center', fontWeight: 600, fontSize: '0.9rem',
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          zIndex: 10000, position: 'relative'
         }}>
           <div className="mb-8" style={{ marginBottom: '12px' }}>☁️ Difference detected! Another device updated the cloud.</div>
           <div className="flex-center gap-12 text-sm">
@@ -218,8 +217,7 @@ function App() {
           background: 'var(--red)', color: '#fff', padding: '10px 16px',
           textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
           display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          zIndex: 10000, position: 'relative'
         }}>
           <span>⚠️ Sync Paused (Session Expired)</span>
           <button 
