@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore, useSettingsStore, useCategoryStore, useDevoteeStore } from './store';
 import { getAuthCache } from './db';
@@ -17,7 +17,8 @@ import { ManageCategories } from './pages/ManageCategories';
 import { BulkImport } from './pages/BulkImport';
 import { MapHub } from './pages/MapHub';
 import { ContactDeveloper } from './pages/ContactDeveloper';
-import { syncToGoogleDrive } from './utils/googleDrive';
+import { syncToGoogleDrive, getGoogleAccessToken, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
+import { restoreFromBackupBlob } from './utils/backup';
 import { GDriveGate } from './components/GDriveGate';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -34,22 +35,76 @@ function App() {
   const { loadCategories } = useCategoryStore();
   const { devotees, load: loadDevotees } = useDevoteeStore();
 
+  const [cloudUpdateAvailable, setCloudUpdateAvailable] = useState(false);
+  const isPullingRef = useRef(false);
+
   useEffect(() => {
-    // ── Mandatory Auto Sync Logic (5s delay) ──
-    if (!gDriveLinked || devotees.length === 0) return;
+    // ── Mandatory Auto Sync Logic (Push to Cloud) ──
+    if (!gDriveLinked || devotees.length === 0 || isPullingRef.current) return;
 
     const timer = setTimeout(async () => {
       try {
         const time = await syncToGoogleDrive();
         await setGDriveSetting('gDriveLastSync', time);
-        console.log('✅ Background sync success');
+        console.log('✅ Background sync success (Pushed local edits)');
       } catch (e: any) {
         console.error('❌ Background sync failed', e);
       }
     }, 5000); // 5 seconds debounce
 
     return () => clearTimeout(timer);
-  }, [devotees.length, gDriveAutoSync, gDriveLinked, plan, setGDriveSetting]);
+  }, [devotees, gDriveAutoSync, gDriveLinked, plan, setGDriveSetting]); // Dependency changed from devotees.length to devotees
+
+  useEffect(() => {
+    // ── Real-time Polling (Pull from Cloud) ──
+    if (!gDriveLinked || !user) return;
+    let isChecking = false;
+
+    const checkCloud = async () => {
+      if (isChecking) return;
+      isChecking = true;
+      try {
+        const token = await getGoogleAccessToken();
+        const existing = await fetchLatestBackup(token);
+        if (existing) {
+           const localTime = useSettingsStore.getState().gDriveLastSync;
+           // If cloud file was modified AFTER our last sync, prompt user
+           if (localTime && existing.modifiedTime > localTime) {
+             setCloudUpdateAvailable(true);
+           }
+        }
+      } catch (e) {
+         console.error('Cloud polling error:', e);
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    const interval = setInterval(checkCloud, 60000); // Check every 60 seconds
+    return () => clearInterval(interval);
+  }, [gDriveLinked, user]);
+
+  const handleCloudUpdate = async () => {
+    setCloudUpdateAvailable(false);
+    isPullingRef.current = true;
+    showToast('Downloading updates...', 'info');
+    try {
+      const token = await getGoogleAccessToken();
+      const existing = await fetchLatestBackup(token);
+      if (existing) {
+        const blob = await downloadBackup(token, existing.id);
+        await restoreFromBackupBlob(blob);
+        await loadDevotees();
+        await loadCategories();
+        await setGDriveSetting('gDriveLastSync', existing.modifiedTime);
+        showToast('✅ App synced with other device!', 'success');
+      }
+    } catch (e: any) {
+      showToast('Update failed', 'error');
+    } finally {
+      setTimeout(() => { isPullingRef.current = false; }, 2000);
+    }
+  };
 
   useEffect(() => {
     // Initial app load: check cache
@@ -104,6 +159,35 @@ function App() {
 
   return (
     <BrowserRouter basename="/kattalai">
+      {/* ── NEW: Cloud Update Banner ── */}
+      {cloudUpdateAvailable && (
+        <div style={{
+          background: 'var(--gold)', color: '#000', padding: '10px 16px',
+          textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <span>☁️ Data updated on another device.</span>
+          <button 
+            onClick={handleCloudUpdate}
+            style={{ 
+              background: '#000', color: 'var(--gold)', border: 'none', 
+              padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 700 
+            }}>
+            Update Now
+          </button>
+          <button 
+            onClick={() => setCloudUpdateAvailable(false)}
+            style={{ 
+              background: 'transparent', color: '#000', border: '1px solid #000', 
+              padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' 
+            }}>
+            Ignore
+          </button>
+        </div>
+      )}
+
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/pending" element={<PendingApproval />} />

@@ -21,7 +21,8 @@ export function GDriveGate({ children }: { children: React.ReactNode }) {
 
       // Step 2: Check if a backup exists on Drive (new device scenario)
       setLinkStep('checking');
-      let existingFileId = await fetchLatestBackup(token);
+      const existing = await fetchLatestBackup(token);
+      let existingFileId: string | null | undefined = existing?.id;
       let isLegacy = false;
 
       if (!existingFileId) {

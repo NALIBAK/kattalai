@@ -98,7 +98,7 @@ async function generateBackupBlob(): Promise<Blob> {
  * Finds the backup file ID in appDataFolder by fixed filename.
  * Returns null if not found (first-time user).
  */
-export async function fetchLatestBackup(token: string): Promise<string | null> {
+export async function fetchLatestBackup(token: string): Promise<{ id: string, modifiedTime: string } | null> {
   const query = encodeURIComponent(`name = '${BACKUP_FILENAME}' and trashed = false`);
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`,
@@ -109,7 +109,7 @@ export async function fetchLatestBackup(token: string): Promise<string | null> {
     throw new Error(err.error?.message || 'Failed to search backup');
   }
   const data = await res.json();
-  return data.files && data.files.length > 0 ? data.files[0].id : null;
+  return data.files && data.files.length > 0 ? { id: data.files[0].id, modifiedTime: data.files[0].modifiedTime } : null;
 }
 
 /**
@@ -163,9 +163,9 @@ export async function syncToGoogleDrive(): Promise<string> {
   const blob = await generateBackupBlob();
 
   // Delete existing backup (replace strategy — one file always)
-  const existingId = await fetchLatestBackup(token);
-  if (existingId) {
-    await fetch(`https://www.googleapis.com/drive/v3/files/${existingId}`, {
+  const existing = await fetchLatestBackup(token);
+  if (existing) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${existing.id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -183,7 +183,7 @@ export async function syncToGoogleDrive(): Promise<string> {
   form.append('file', blob);
 
   const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=modifiedTime',
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -195,8 +195,8 @@ export async function syncToGoogleDrive(): Promise<string> {
     const err = await res.json();
     throw new Error(err.error?.message || 'Upload failed');
   }
-
-  return new Date().toLocaleString();
+  const resData = await res.json();
+  return resData.modifiedTime || new Date().toISOString();
 }
 
 // ── Legacy compat — getFolderId no longer needed with appDataFolder ──────────

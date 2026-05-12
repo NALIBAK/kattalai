@@ -55,7 +55,8 @@ export function Profile() {
       showToast('Connecting to Google Drive...', 'info');
       const token = await getGoogleAccessToken();
       
-      let existingFileId = await fetchLatestBackup(token);
+      const existing = await fetchLatestBackup(token);
+      let existingFileId: string | null | undefined = existing?.id;
       let isLegacy = false;
 
       if (!existingFileId) {
