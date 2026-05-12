@@ -40,3 +40,23 @@ export async function restoreFromBackupBlob(blob: Blob): Promise<void> {
     await tx.done;
   }
 }
+
+/**
+ * Previews the contents of a backup blob without restoring it.
+ */
+export async function previewBackupBlob(blob: Blob): Promise<{ devoteeCount: number, date: string, rawData: any }> {
+  const zip = new JSZip();
+  const loadedZip = await zip.loadAsync(blob);
+  const jsonFile = loadedZip.file('kattalai_db_backup.json');
+  
+  if (!jsonFile) throw new Error('Valid JSON backup file not found in ZIP');
+  
+  const jsonStr = await jsonFile.async('string');
+  const data = JSON.parse(jsonStr);
+  
+  return {
+    devoteeCount: data.devotees ? data.devotees.length : 0,
+    date: data.meta?.date || new Date().toISOString(),
+    rawData: data
+  };
+}

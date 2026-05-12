@@ -170,32 +170,36 @@ function App() {
 
   return (
     <BrowserRouter basename="/kattalai">
-      {/* ── NEW: Cloud Update Banner ── */}
+      {/* ── NEW: Cloud Update Banner (Conflict Resolver) ── */}
       {cloudUpdateAvailable && !syncPaused && (
         <div style={{
-          background: 'var(--gold)', color: '#000', padding: '10px 16px',
-          textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
+          background: 'var(--gold)', color: '#000', padding: '16px',
+          textAlign: 'center', fontWeight: 600, fontSize: '0.9rem',
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
         }}>
-          <span>☁️ Data updated on another device.</span>
-          <button 
-            onClick={handleCloudUpdate}
-            style={{ 
-              background: '#000', color: 'var(--gold)', border: 'none', 
-              padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 700 
-            }}>
-            Update Now
-          </button>
-          <button 
-            onClick={() => setCloudUpdateAvailable(false)}
-            style={{ 
-              background: 'transparent', color: '#000', border: '1px solid #000', 
-              padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' 
-            }}>
-            Ignore
-          </button>
+          <div className="mb-8" style={{ marginBottom: '12px' }}>☁️ Difference detected! Another device updated the cloud.</div>
+          <div className="flex-center gap-12 text-sm">
+             <button 
+                onClick={handleCloudUpdate}
+                style={{ background: '#000', color: 'var(--gold)', border: 'none', padding: '6px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+             >
+                Keep Cloud Data
+             </button>
+             <button 
+                onClick={async () => {
+                   setCloudUpdateAvailable(false);
+                   showToast('Pushing local data to cloud...', 'info');
+                   try {
+                     const time = await syncToGoogleDrive(true);
+                     await setGDriveSetting('gDriveLastSync', time);
+                   } catch(e) {}
+                }}
+                style={{ background: 'transparent', color: '#000', border: '1px solid #000', padding: '5px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+             >
+                Keep Local Data
+             </button>
+          </div>
         </div>
       )}
 
