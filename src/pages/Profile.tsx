@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore } from '../store';
+import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
 import { verifyAccess } from '../auth';
 import { getGoogleAccessToken, fetchLatestBackup, fetchLegacyBackup, downloadBackup, syncToGoogleDrive } from '../utils/googleDrive';
-import { restoreFromBackupBlob } from '../utils/backup';
+import { restoreFromBackupBlob, previewBackupBlob } from '../utils/backup';
+import type { Devotee } from '../db';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -11,8 +12,11 @@ export function Profile() {
   const { showToast } = useToastStore();
   const { refresh: refreshDevotees } = useDevoteeStore();
   const { loadCategories } = useCategoryStore();
+  const { setGDriveSetting } = useSettingsStore();
+  
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
 
   if (!user) return null;
 
@@ -45,17 +49,76 @@ export function Profile() {
     navigate('/login');
   };
 
-  const handleForceRestore = async () => {
-    if (!window.confirm('⚠️ This will overwrite your current local data with the latest cloud backup. Continue?')) {
-      return;
-    }
+  // ── Helper to compare devotees ──
+  const compareDevotees = (source: Devotee[], target: Devotee[]) => {
+    const targetMap = new Map(target.map(d => [d.id, d]));
+    const sourceMap = new Map(source.map(d => [d.id, d]));
+    const added: string[] = [];
+    const removed: string[] = [];
+    const changed: string[] = [];
     
-    setIsRestoring(true);
+    for (const s of source) {
+      const t = targetMap.get(s.id);
+      if (!t) added.push(s.name);
+      else if (s.updated_at !== t.updated_at) changed.push(s.name);
+    }
+    for (const t of target) {
+      if (!sourceMap.has(t.id)) removed.push(t.name);
+    }
+    return { added, removed, changed };
+  };
+
+  const truncate = (arr: string[]) => arr.length > 5 ? `${arr.slice(0, 5).join(', ')} ...and ${arr.length - 5} more` : arr.join(', ');
+
+  const handlePush = async () => {
+    setIsPushing(true);
     try {
       showToast('Connecting to Google Drive...', 'info');
       const token = await getGoogleAccessToken();
-      
       const existing = await fetchLatestBackup(token);
+      let cloudDevotees: Devotee[] = [];
+      
+      if (existing) {
+        showToast('Fetching cloud version for comparison...', 'info');
+        const blob = await downloadBackup(token, existing.id);
+        const cloudPreview = await previewBackupBlob(blob);
+        cloudDevotees = cloudPreview.rawData.devotees || [];
+      }
+      
+      const localDevotees = useDevoteeStore.getState().devotees;
+      const { added, removed, changed } = compareDevotees(localDevotees, cloudDevotees);
+      
+      let msg = 'Pushing your local data to the cloud will result in:\n\n';
+      if (added.length) msg += `➕ Add: ${truncate(added)}\n`;
+      if (removed.length) msg += `🗑️ Remove: ${truncate(removed)}\n`;
+      if (changed.length) msg += `✏️ Update: ${truncate(changed)}\n`;
+      
+      if (!added.length && !removed.length && !changed.length) {
+        msg = 'Local and Cloud data appear to be identical.\n\nForce Push anyway?';
+      } else {
+        msg += '\nAre you sure you want to OVERWRITE the cloud with local data?';
+      }
+      
+      if (!window.confirm(msg)) return;
+      
+      showToast('Pushing to cloud...', 'info');
+      const time = await syncToGoogleDrive(false);
+      await setGDriveSetting('gDriveLastSync', time);
+      showToast('✅ Push successful!', 'success');
+    } catch(e: any) {
+      showToast(e.message || 'Push failed', 'error');
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  const handlePull = async () => {
+    setIsPulling(true);
+    try {
+      showToast('Connecting to Google Drive...', 'info');
+      const token = await getGoogleAccessToken();
+      const existing = await fetchLatestBackup(token);
+      
       let existingFileId: string | null | undefined = existing?.id;
       let isLegacy = false;
 
@@ -64,26 +127,51 @@ export function Profile() {
         if (existingFileId) isLegacy = true;
       }
 
-      if (existingFileId) {
-        showToast('Found cloud backup, downloading...', 'info');
-        const blob = await downloadBackup(token, existingFileId);
-        await restoreFromBackupBlob(blob);
-        await refreshDevotees();
-        await loadCategories();
-        showToast('✅ Successfully restored from cloud!', 'success');
-
-        if (isLegacy) {
-          showToast('Migrating legacy backup to new format...', 'info');
-          await syncToGoogleDrive();
-        }
-      } else {
+      if (!existingFileId) {
         showToast('No cloud backup found for this account.', 'error');
+        return;
       }
-    } catch (e: any) {
-      console.error(e);
-      showToast(e.message || 'Failed to restore from cloud.', 'error');
+      
+      showToast('Fetching cloud version for comparison...', 'info');
+      const blob = await downloadBackup(token, existingFileId);
+      const cloudPreview = await previewBackupBlob(blob);
+      const cloudDevotees: Devotee[] = cloudPreview.rawData.devotees || [];
+      const localDevotees = useDevoteeStore.getState().devotees;
+      
+      const { added, removed, changed } = compareDevotees(cloudDevotees, localDevotees);
+      
+      let msg = 'Pulling from the cloud will result in:\n\n';
+      if (added.length) msg += `➕ Add: ${truncate(added)}\n`;
+      if (removed.length) msg += `🗑️ Remove: ${truncate(removed)}\n`;
+      if (changed.length) msg += `✏️ Update: ${truncate(changed)}\n`;
+      
+      if (!added.length && !removed.length && !changed.length) {
+        msg = 'Cloud and Local data appear to be identical.\n\nForce Pull anyway?';
+      } else {
+        msg += '\nAre you sure you want to OVERWRITE your local data with cloud data?';
+      }
+      
+      if (!window.confirm(msg)) return;
+      
+      showToast('Restoring local data...', 'info');
+      await restoreFromBackupBlob(blob);
+      await refreshDevotees();
+      await loadCategories();
+      
+      if (existing) {
+        await setGDriveSetting('gDriveLastSync', existing.modifiedTime || new Date().toISOString());
+      }
+      
+      showToast('✅ Pull successful!', 'success');
+
+      if (isLegacy) {
+        showToast('Migrating legacy backup to new format...', 'info');
+        await syncToGoogleDrive();
+      }
+    } catch(e: any) {
+      showToast(e.message || 'Pull failed', 'error');
     } finally {
-      setIsRestoring(false);
+      setIsPulling(false);
     }
   };
 
@@ -136,18 +224,28 @@ export function Profile() {
       </div>
 
       <div className="card mb-24">
-        <h4 className="mb-16 text-2">Cloud Sync</h4>
+        <h4 className="mb-16 text-2">Manual Cloud Sync</h4>
         <p className="text-sm text-muted mb-16">
-          If your data is missing or out of sync, you can force a restore from your Google Drive backup. This will overwrite local changes.
+          Compare and synchronize your data. You can push local changes up, or pull cloud changes down.
         </p>
-        <button 
-          className="btn btn-ghost w-full" 
-          onClick={handleForceRestore}
-          disabled={isRestoring}
-          style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
-        >
-          {isRestoring ? '⏳ Restoring...' : '☁️ Force Restore from Cloud'}
-        </button>
+        <div className="grid-2">
+          <button 
+            className="btn btn-ghost w-full" 
+            onClick={handlePush}
+            disabled={isPushing || isPulling}
+            style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+          >
+            {isPushing ? '⏳ Pushing...' : '📤 Push to Cloud'}
+          </button>
+          <button 
+            className="btn btn-ghost w-full" 
+            onClick={handlePull}
+            disabled={isPulling || isPushing}
+            style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+          >
+            {isPulling ? '⏳ Pulling...' : '📥 Pull from Cloud'}
+          </button>
+        </div>
       </div>
 
       <button className="btn btn-ghost btn-full" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={handleLogout}>
