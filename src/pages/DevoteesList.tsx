@@ -57,7 +57,13 @@ export function DevoteesList() {
       {/* Header */}
       <div className="section flex-between mb-16" style={{ position: 'sticky', top: '56px', background: 'var(--bg)', zIndex: 10, padding: '16px 0', marginTop: '-16px' }}>
         <h2 className="mb-0">Devotees ({filtered.length})</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => navigate('/devotees/new')}>➕ Add New</button>
+        <div className="flex gap-8">
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/bulk-import')}
+            title="Bulk Import (Pro)" style={{ color: 'var(--gold)', borderColor: 'var(--gold)' }}>
+            📦 Bulk
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/devotees/new')}>➕ Add New</button>
+        </div>
       </div>
       
       {/* Search & Filter Trigger */}
