@@ -38,7 +38,12 @@ export function ManageCategories() {
   const handleDelete = async (id: string) => {
     // Check how many devotees use this
     const count = devotees.filter(d => d.category === id).length;
-    if (window.confirm(`Delete this category? ${count} devotees will be moved to 'Uncategorised'.`)) {
+    if (count > 0) {
+      showToast(`Cannot delete category! ${count} devotees are still using it.`, 'error');
+      return;
+    }
+    
+    if (window.confirm('Delete this empty category?')) {
       await deleteCategory(id);
       await loadCategories();
       await refresh();

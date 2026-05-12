@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
-import { upsertDevotee, generateId } from '../db';
-import type { Devotee } from '../db';
+import { upsertDevotee, generateId, upsertCategory } from '../db';
+import type { Devotee, Category } from '../db';
 import { parseBulkText, suggestCategoryForCity } from '../utils/parseBulkText';
 import type { ParsedRecord } from '../utils/parseBulkText';
 import { preprocessImageForOCR } from '../utils/imagePreprocess';
@@ -111,7 +111,7 @@ export function BulkImport() {
   const navigate = useNavigate();
   const { plan } = useAuthStore();
   const { refresh } = useDevoteeStore();
-  const { categories } = useCategoryStore();
+  const { categories, loadCategories } = useCategoryStore();
   const { defaultAmount } = useSettingsStore();
   const { showToast } = useToastStore();
 
@@ -137,6 +137,7 @@ export function BulkImport() {
   const [records, setRecords] = useState<ParsedRecord[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editTarget, setEditTarget] = useState<ParsedRecord | null>(null);
+  const [globalCategory, setGlobalCategory] = useState<string>('');
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -183,10 +184,10 @@ export function BulkImport() {
     const parsed = parseBulkText(rawText);
     if (parsed.length === 0) { showToast('No records found. Make sure each person is separated by a blank line.', 'error'); return; }
 
-    // Enrich with suggested category
+    // Enrich with suggested category or global selected category
     const enriched = parsed.map(r => ({
       ...r,
-      suggestedCategory: suggestCategoryForCity(r.city, categories),
+      suggestedCategory: globalCategory || suggestCategoryForCity(r.city, categories),
     }));
 
     setRecords(enriched);
@@ -303,6 +304,37 @@ export function BulkImport() {
               <button style={tabBtn(inputTab === 'text')} onClick={() => setInputTab('text')}>📝 Paste Text</button>
               <button style={tabBtn(inputTab === 'file')} onClick={() => setInputTab('file')}>📂 Upload File</button>
               <button style={tabBtn(inputTab === 'photo')} onClick={() => setInputTab('photo')}>📷 Scan Photo</button>
+            </div>
+
+            <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>Assign All To Category (Optional)</label>
+              <select className="form-input" value={globalCategory} onChange={async (e) => {
+                const val = e.target.value;
+                if (val === 'NEW_CATEGORY') {
+                  const name = window.prompt('Enter new category name:');
+                  if (name && name.trim()) {
+                    const newCat: Category = {
+                      id: generateId('CAT'),
+                      name: name.trim(),
+                      color: '#F0A500',
+                      is_builtin: false,
+                      sort_order: categories.length + 1
+                    };
+                    await upsertCategory(newCat);
+                    await loadCategories();
+                    setGlobalCategory(newCat.id);
+                    showToast('New category created!', 'success');
+                  } else {
+                    setGlobalCategory(''); // reset if cancelled
+                  }
+                } else {
+                  setGlobalCategory(val);
+                }
+              }}>
+                <option value="">✨ Auto-detect based on City</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value="NEW_CATEGORY" style={{ fontWeight: 'bold', color: 'var(--gold)' }}>➕ Create New Category...</option>
+              </select>
             </div>
 
             {inputTab === 'text' && (
