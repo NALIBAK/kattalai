@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, useToastStore } from '../store';
+import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore } from '../store';
 import { verifyAccess } from '../auth';
+import { getGoogleAccessToken, fetchLatestBackup, fetchLegacyBackup, downloadBackup, syncToGoogleDrive } from '../utils/googleDrive';
+import { restoreFromBackupBlob } from '../utils/backup';
 
 export function Profile() {
   const navigate = useNavigate();
   const { user, plan, setCache, logout } = useAuthStore();
   const { showToast } = useToastStore();
+  const { refresh: refreshDevotees } = useDevoteeStore();
+  const { loadCategories } = useCategoryStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   if (!user) return null;
 
@@ -38,6 +43,47 @@ export function Profile() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleForceRestore = async () => {
+    if (!window.confirm('⚠️ This will overwrite your current local data with the latest cloud backup. Continue?')) {
+      return;
+    }
+    
+    setIsRestoring(true);
+    try {
+      showToast('Connecting to Google Drive...', 'info');
+      const token = await getGoogleAccessToken();
+      
+      let existingFileId = await fetchLatestBackup(token);
+      let isLegacy = false;
+
+      if (!existingFileId) {
+        existingFileId = await fetchLegacyBackup(token);
+        if (existingFileId) isLegacy = true;
+      }
+
+      if (existingFileId) {
+        showToast('Found cloud backup, downloading...', 'info');
+        const blob = await downloadBackup(token, existingFileId);
+        await restoreFromBackupBlob(blob);
+        await refreshDevotees();
+        await loadCategories();
+        showToast('✅ Successfully restored from cloud!', 'success');
+
+        if (isLegacy) {
+          showToast('Migrating legacy backup to new format...', 'info');
+          await syncToGoogleDrive();
+        }
+      } else {
+        showToast('No cloud backup found for this account.', 'error');
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || 'Failed to restore from cloud.', 'error');
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   return (
@@ -85,6 +131,21 @@ export function Profile() {
           ) : (
             'Refresh Subscription'
           )}
+        </button>
+      </div>
+
+      <div className="card mb-24">
+        <h4 className="mb-16 text-2">Cloud Sync</h4>
+        <p className="text-sm text-muted mb-16">
+          If your data is missing or out of sync, you can force a restore from your Google Drive backup. This will overwrite local changes.
+        </p>
+        <button 
+          className="btn btn-ghost w-full" 
+          onClick={handleForceRestore}
+          disabled={isRestoring}
+          style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+        >
+          {isRestoring ? '⏳ Restoring...' : '☁️ Force Restore from Cloud'}
         </button>
       </div>
 
