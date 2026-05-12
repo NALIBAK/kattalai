@@ -17,8 +17,7 @@ import { ManageCategories } from './pages/ManageCategories';
 import { BulkImport } from './pages/BulkImport';
 import { MapHub } from './pages/MapHub';
 import { ContactDeveloper } from './pages/ContactDeveloper';
-import { syncToGoogleDrive, getGoogleAccessToken, getFolderId, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
-import { restoreFromBackupBlob } from './utils/backup';
+import { syncToGoogleDrive } from './utils/googleDrive';
 import { GDriveGate } from './components/GDriveGate';
 
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -63,33 +62,12 @@ function App() {
         if (cache) {
           setCache(cache);
           
-          // Silent refresh in background
+          // Silent background plan refresh
           verifyAccess(cache.email).then(newCache => {
             if (newCache && newCache.plan !== cache.plan) {
               setCache(newCache);
             }
           }).catch(() => {});
-
-          // ── Silent Cloud Restore on Init if Local DB Empty ──
-          const currentDevotees = useDevoteeStore.getState().devotees;
-          if (gDriveLinked && currentDevotees.length === 0) {
-            try {
-              const token = await getGoogleAccessToken();
-              const folderId = await getFolderId(token);
-              const latestFileId = await fetchLatestBackup(token, folderId);
-              
-              if (latestFileId) {
-                console.log('📦 Found cloud backup, restoring silently...');
-                const blob = await downloadBackup(token, latestFileId);
-                await restoreFromBackupBlob(blob);
-                await loadDevotees();
-                await loadCategories();
-                showToast('Welcome back! Your data has been synced from the cloud.', 'success');
-              }
-            } catch (err) {
-              console.error("Cloud restore failed", err);
-            }
-          }
         }
       } catch (e) {
         console.error("Init error", e);

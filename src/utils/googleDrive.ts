@@ -4,36 +4,49 @@ import { getDB, PaymentEntry, Devotee } from '../db';
 /**
  * GOOGLE DRIVE SYNC UTILITY
  * -------------------------
- * This utility handles OAuth 2.0 authentication and file uploads to Google Drive.
- * It uses the 'drive.file' scope to only access files created by this app.
+ * Uses 'drive.appdata' scope — files are stored in the app's hidden
+ * appDataFolder, which is accessible from ANY device the user signs
+ * into, unlike 'drive.file' which is session/device-scoped.
+ *
+ * A single fixed filename 'kattalai_latest_backup.zip' is used so
+ * there is always exactly one backup file — no search needed.
  */
 
-// Use the Client ID from environment variables (set in .env file)
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-const DRIVE_FOLDER_NAME = 'Kattalai Sync Data';
+// Fixed filename — overwritten on every sync, always findable cross-device
+const BACKUP_FILENAME = 'kattalai_latest_backup.zip';
+
 let accessToken: string | null = null;
+let tokenExpiry: number = 0;
 
 /**
- * Requests an OAuth 2.0 access token from Google using Identity Services.
+ * Requests an OAuth 2.0 access token using drive.appdata scope.
+ * drive.appdata = hidden per-app folder, accessible from all devices.
  */
 export async function getGoogleAccessToken(): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (accessToken) return resolve(accessToken);
+    // Return cached token if still valid (with 60s buffer)
+    if (accessToken && Date.now() < tokenExpiry - 60000) {
+      return resolve(accessToken);
+    }
 
     if (!(window as any).google) {
-      reject(new Error('Google Identity Services script not loaded. Check index.html.'));
+      reject(new Error('Google Identity Services not loaded.'));
       return;
     }
 
     const client = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
+      // drive.appdata: cross-device hidden folder, user's own data only
+      scope: 'https://www.googleapis.com/auth/drive.appdata',
       callback: (response: any) => {
-        if (response.error_description) {
-          reject(new Error(response.error_description));
+        if (response.error || response.error_description) {
+          reject(new Error(response.error_description || response.error));
         } else {
           accessToken = response.access_token;
+          // Google tokens expire in 3600s; cache with expiry
+          tokenExpiry = Date.now() + (response.expires_in ?? 3600) * 1000;
           resolve(response.access_token);
         }
       },
@@ -44,7 +57,15 @@ export async function getGoogleAccessToken(): Promise<string> {
 }
 
 /**
- * Generates a standard backup ZIP blob.
+ * Clears the cached token (call on logout or re-link).
+ */
+export function clearAccessToken() {
+  accessToken = null;
+  tokenExpiry = 0;
+}
+
+/**
+ * Generates a standard backup ZIP blob from current IndexedDB.
  */
 async function generateBackupBlob(): Promise<Blob> {
   const db = await getDB();
@@ -53,80 +74,91 @@ async function generateBackupBlob(): Promise<Blob> {
   const payments = await db.getAll('payment_history') as PaymentEntry[];
 
   const backupObj = {
-    meta: { app: 'Kattalai_CMS', version: '1.0', date: new Date().toISOString() },
+    meta: { app: 'Kattalai_CMS', version: '2.0', date: new Date().toISOString() },
     devotees,
     categories: categories.filter(c => !c.is_builtin),
-    payments
+    payments,
   };
 
   const zip = new JSZip();
   zip.file('kattalai_db_backup.json', JSON.stringify(backupObj, null, 2));
-  
-  // CSV for readability
+
+  // CSV for human readability
   const csvHeader = 'ID,Name,Phone,City,Category,Amount\n';
-  const csvRows = (devotees as Devotee[]).map(d => `${d.id},"${d.name}","${d.phone}","${d.city}","${d.category}",${d.amount_paid}`);
+  const csvRows = (devotees as Devotee[]).map(
+    d => `${d.id},"${d.name}","${d.phone}","${d.city}","${d.category}",${d.amount_paid}`
+  );
   zip.file('devotees_readable.csv', csvHeader + csvRows.join('\n'));
 
-  return await zip.generateAsync({ type: 'blob' });
+  return zip.generateAsync({ type: 'blob' });
 }
 
 /**
- * Finds or creates the "Kattalai CMS Backups" folder.
+ * Finds the backup file ID in appDataFolder by fixed filename.
+ * Returns null if not found (first-time user).
  */
-export async function getFolderId(token: string): Promise<string> {
-  // 1. Search for existing folder
-  const query = encodeURIComponent(`name = '${DRIVE_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const searchData = await searchRes.json();
-
-  if (searchData.files && searchData.files.length > 0) {
-    return searchData.files[0].id;
+export async function fetchLatestBackup(token: string): Promise<string | null> {
+  const query = encodeURIComponent(`name = '${BACKUP_FILENAME}' and trashed = false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Failed to search backup');
   }
-
-  // 2. Create if not found
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      name: DRIVE_FOLDER_NAME,
-      mimeType: 'application/vnd.google-apps.folder'
-    })
-  });
-  const createData = await createRes.json();
-  return createData.id;
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
 }
 
 /**
- * Main function to sync data to Google Drive.
+ * Downloads a backup file by ID.
+ */
+export async function downloadBackup(token: string, fileId: string): Promise<Blob> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error('Download failed — file may no longer exist');
+  return res.blob();
+}
+
+/**
+ * Main sync: upload backup to appDataFolder with fixed filename.
+ * Deletes existing file first so there's always exactly one copy.
  */
 export async function syncToGoogleDrive(): Promise<string> {
   const token = await getGoogleAccessToken();
-  const folderId = await getFolderId(token);
   const blob = await generateBackupBlob();
-  
-  const fileName = `Kattalai_AutoBackup_${new Date().toISOString().slice(0, 10)}.zip`;
 
-  // Multipart upload (Metadata + Content)
+  // Delete existing backup (replace strategy — one file always)
+  const existingId = await fetchLatestBackup(token);
+  if (existingId) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${existingId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  // Upload to appDataFolder
   const metadata = {
-    name: fileName,
-    parents: [folderId],
-    mimeType: 'application/zip'
+    name: BACKUP_FILENAME,
+    parents: ['appDataFolder'],
+    mimeType: 'application/zip',
   };
 
   const form = new FormData();
   form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   form.append('file', blob);
 
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form
-  });
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    }
+  );
 
   if (!res.ok) {
     const err = await res.json();
@@ -136,25 +168,7 @@ export async function syncToGoogleDrive(): Promise<string> {
   return new Date().toLocaleString();
 }
 
-/**
- * Finds the latest backup file in the sync folder.
- */
-export async function fetchLatestBackup(token: string, folderId: string): Promise<string | null> {
-  const query = encodeURIComponent(`'${folderId}' in parents and name contains 'Kattalai_AutoBackup' and trashed = false`);
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=createdTime desc&pageSize=1`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
-  return (data.files && data.files.length > 0) ? data.files[0].id : null;
-}
-
-/**
- * Downloads a file by ID and returns its content as a Blob.
- */
-export async function downloadBackup(token: string, fileId: string): Promise<Blob> {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!res.ok) throw new Error('Download failed');
-  return await res.blob();
+// ── Legacy compat — getFolderId no longer needed with appDataFolder ──────────
+export async function getFolderId(_token: string): Promise<string> {
+  return 'appDataFolder';
 }

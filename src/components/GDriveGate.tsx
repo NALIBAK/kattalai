@@ -1,77 +1,114 @@
 import React, { useState } from 'react';
-import { useSettingsStore, useToastStore } from '../store';
-import { getGoogleAccessToken, syncToGoogleDrive } from '../utils/googleDrive';
+import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
+import { getGoogleAccessToken, syncToGoogleDrive, fetchLatestBackup, downloadBackup } from '../utils/googleDrive';
+import { restoreFromBackupBlob } from '../utils/backup';
 
 export function GDriveGate({ children }: { children: React.ReactNode }) {
   const { gDriveLinked, setGDriveSetting } = useSettingsStore();
+  const { refresh: refreshDevotees, devotees } = useDevoteeStore();
+  const { loadCategories } = useCategoryStore();
   const { showToast } = useToastStore();
+
   const [isLinking, setIsLinking] = useState(false);
+  const [linkStep, setLinkStep] = useState<'idle' | 'auth' | 'checking' | 'restoring' | 'syncing'>('idle');
 
   const handleLink = async () => {
     setIsLinking(true);
+    setLinkStep('auth');
     try {
-      // 1. Get token (triggers OAuth popup)
-      await getGoogleAccessToken();
-      
-      // 2. Perform an initial sync to verify permissions and create folder
-      await syncToGoogleDrive();
-      
-      // 3. Update store
+      // Step 1: Get OAuth token (user popup)
+      const token = await getGoogleAccessToken();
+
+      // Step 2: Check if a backup exists on Drive (new device scenario)
+      setLinkStep('checking');
+      const existingFileId = await fetchLatestBackup(token);
+
+      if (existingFileId && devotees.length === 0) {
+        // ── NEW DEVICE: restore existing backup ──────────────────
+        setLinkStep('restoring');
+        showToast('Found your cloud backup — restoring...', 'info');
+        const blob = await downloadBackup(token, existingFileId);
+        await restoreFromBackupBlob(blob);
+        await refreshDevotees();
+        await loadCategories();
+        showToast('✅ All your data has been restored from cloud!', 'success');
+      } else if (existingFileId && devotees.length > 0) {
+        // ── EXISTING DEVICE: has both local + cloud — merge by syncing ──
+        setLinkStep('syncing');
+        await syncToGoogleDrive();
+        showToast('Cloud Sync enabled — data saved!', 'success');
+      } else {
+        // ── FIRST TIME: no backup exists yet — create initial backup ──
+        setLinkStep('syncing');
+        await syncToGoogleDrive();
+        showToast('Cloud Sync enabled — initial backup created!', 'success');
+      }
+
+      // Step 3: Mark as linked
       await setGDriveSetting('gDriveLinked', true);
-      await setGDriveSetting('gDriveAutoSync', true); // Mandatory auto-sync
-      
-      showToast('Cloud Sync enabled successfully!', 'success');
+      await setGDriveSetting('gDriveAutoSync', true);
+
     } catch (e: any) {
-      console.error(e);
-      showToast(e.message || 'Linking failed', 'error');
+      console.error('[GDriveGate] Link failed:', e);
+      showToast(e.message || 'Cloud sync setup failed. Please try again.', 'error');
     } finally {
       setIsLinking(false);
+      setLinkStep('idle');
     }
   };
 
+  // Already linked — render app normally
   if (gDriveLinked) {
     return <>{children}</>;
   }
 
+  const stepLabel = () => {
+    if (linkStep === 'auth')      return 'Connecting to Google...';
+    if (linkStep === 'checking')  return 'Checking for existing backup...';
+    if (linkStep === 'restoring') return 'Restoring your data...';
+    if (linkStep === 'syncing')   return 'Saving to cloud...';
+    return 'Enable Cloud Sync & Storage';
+  };
+
   return (
-    <div className="flex-center" style={{ 
-      position: 'fixed', inset: 0, zIndex: 9999, 
-      background: 'var(--bg)', padding: 24, textAlign: 'center' 
+    <div className="flex-center" style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'var(--bg)', padding: 24, textAlign: 'center',
     }}>
       <div className="card-flat" style={{ maxWidth: 400, border: '2px solid var(--gold)' }}>
         <div style={{ fontSize: '4rem', marginBottom: 16 }}>☁️</div>
-        <h2 className="text-gold">Mandatory Cloud Sync</h2>
+        <h2 className="text-gold">Cloud Sync Required</h2>
         <p className="text-2 mb-24">
-          To ensure your devotee records are never lost, Kattalai now requires a mandatory Google Drive link for all users.
+          Your devotee records are backed up to your personal Google Drive.
+          Sign in on any device to restore all your data instantly.
         </p>
-        
+
         <div className="flex-col gap-12 text-sm text-muted mb-24" style={{ textAlign: 'left' }}>
           <div className="flex gap-12">
             <span>🛡️</span>
-            <span>Your data is stored securely in <b>your</b> Google Drive.</span>
+            <span>Stored in <b>your</b> Google Drive — private to you.</span>
           </div>
           <div className="flex gap-12">
             <span>🔄</span>
-            <span>All changes will automatically sync to the cloud.</span>
+            <span>Auto-syncs after every change.</span>
           </div>
           <div className="flex gap-12">
             <span>📱</span>
-            <span>Access your data from any device by logging in.</span>
+            <span><b>New device?</b> Your data will be restored automatically.</span>
           </div>
         </div>
 
-        <button 
-          className="btn btn-primary w-full" 
+        <button
+          className="btn btn-primary w-full"
           onClick={handleLink}
           disabled={isLinking}
           style={{ height: 48, fontSize: '1rem' }}
         >
-          {isLinking ? 'Linking Cloud Storage...' : 'Enable Cloud Sync & Storage'}
+          {isLinking ? `⏳ ${stepLabel()}` : '☁️ Enable Cloud Sync & Storage'}
         </button>
-        
+
         <p className="text-xs text-muted mt-16">
-          Kattalai will only have access to files it creates. 
-          We never see your other Drive files.
+          Kattalai only accesses its own hidden app folder. We never see your other Drive files.
         </p>
       </div>
     </div>
