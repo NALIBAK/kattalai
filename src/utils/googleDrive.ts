@@ -22,15 +22,35 @@ let tokenExpiry: number = 0;
 
 /**
  * Requests an OAuth 2.0 access token using drive.appdata scope.
- * drive.appdata = hidden per-app folder, accessible from all devices.
+ * If silent = true, it throws 'AUTH_REQUIRED' if the token is not cached,
+ * instead of opening a Google Sign-in popup.
  */
-export async function getGoogleAccessToken(): Promise<string> {
+export async function getGoogleAccessToken(silent: boolean = false): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Return cached token if still valid (with 60s buffer)
+    // 1. Check memory cache
     if (accessToken && Date.now() < tokenExpiry - 60000) {
       return resolve(accessToken);
     }
+    
+    // 2. Check local storage cache
+    const storedToken = localStorage.getItem('gdrive_token');
+    const storedExpiry = localStorage.getItem('gdrive_token_expiry');
+    
+    if (storedToken && storedExpiry) {
+      const expiryTime = parseInt(storedExpiry, 10);
+      if (Date.now() < expiryTime - 60000) {
+        accessToken = storedToken;
+        tokenExpiry = expiryTime;
+        return resolve(storedToken);
+      }
+    }
 
+    // 3. Token missing or expired. If silent, abort.
+    if (silent) {
+      return reject(new Error('AUTH_REQUIRED'));
+    }
+
+    // 4. Not silent, trigger the interactive popup
     if (!(window as any).google) {
       reject(new Error('Google Identity Services not loaded.'));
       return;
@@ -48,6 +68,10 @@ export async function getGoogleAccessToken(): Promise<string> {
           accessToken = response.access_token;
           // Google tokens expire in 3600s; cache with expiry
           tokenExpiry = Date.now() + (response.expires_in ?? 3600) * 1000;
+          
+          localStorage.setItem('gdrive_token', accessToken!);
+          localStorage.setItem('gdrive_token_expiry', tokenExpiry.toString());
+          
           resolve(response.access_token);
         }
       },
@@ -63,6 +87,8 @@ export async function getGoogleAccessToken(): Promise<string> {
 export function clearAccessToken() {
   accessToken = null;
   tokenExpiry = 0;
+  localStorage.removeItem('gdrive_token');
+  localStorage.removeItem('gdrive_token_expiry');
 }
 
 /**
@@ -158,8 +184,8 @@ export async function downloadBackup(token: string, fileId: string): Promise<Blo
  * Main sync: upload backup to appDataFolder with fixed filename.
  * Deletes existing file first so there's always exactly one copy.
  */
-export async function syncToGoogleDrive(): Promise<string> {
-  const token = await getGoogleAccessToken();
+export async function syncToGoogleDrive(silent: boolean = true): Promise<string> {
+  const token = await getGoogleAccessToken(silent);
   const blob = await generateBackupBlob();
 
   // Delete existing backup (replace strategy — one file always)

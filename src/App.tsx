@@ -36,6 +36,7 @@ function App() {
   const { devotees, load: loadDevotees } = useDevoteeStore();
 
   const [cloudUpdateAvailable, setCloudUpdateAvailable] = useState(false);
+  const [syncPaused, setSyncPaused] = useState(false);
   const isPullingRef = useRef(false);
 
   useEffect(() => {
@@ -44,11 +45,16 @@ function App() {
 
     const timer = setTimeout(async () => {
       try {
-        const time = await syncToGoogleDrive();
+        const time = await syncToGoogleDrive(true);
         await setGDriveSetting('gDriveLastSync', time);
+        setSyncPaused(false);
         console.log('✅ Background sync success (Pushed local edits)');
       } catch (e: any) {
-        console.error('❌ Background sync failed', e);
+        if (e.message === 'AUTH_REQUIRED') {
+          setSyncPaused(true);
+        } else {
+          console.error('❌ Background sync failed', e);
+        }
       }
     }, 5000); // 5 seconds debounce
 
@@ -64,7 +70,8 @@ function App() {
       if (isChecking) return;
       isChecking = true;
       try {
-        const token = await getGoogleAccessToken();
+        const token = await getGoogleAccessToken(true);
+        setSyncPaused(false);
         const existing = await fetchLatestBackup(token);
         if (existing) {
            const localTime = useSettingsStore.getState().gDriveLastSync;
@@ -73,8 +80,12 @@ function App() {
              setCloudUpdateAvailable(true);
            }
         }
-      } catch (e) {
-         console.error('Cloud polling error:', e);
+      } catch (e: any) {
+         if (e.message === 'AUTH_REQUIRED') {
+           setSyncPaused(true);
+         } else {
+           console.error('Cloud polling error:', e);
+         }
       } finally {
         isChecking = false;
       }
@@ -89,7 +100,7 @@ function App() {
     isPullingRef.current = true;
     showToast('Downloading updates...', 'info');
     try {
-      const token = await getGoogleAccessToken();
+      const token = await getGoogleAccessToken(false);
       const existing = await fetchLatestBackup(token);
       if (existing) {
         const blob = await downloadBackup(token, existing.id);
@@ -160,7 +171,7 @@ function App() {
   return (
     <BrowserRouter basename="/kattalai">
       {/* ── NEW: Cloud Update Banner ── */}
-      {cloudUpdateAvailable && (
+      {cloudUpdateAvailable && !syncPaused && (
         <div style={{
           background: 'var(--gold)', color: '#000', padding: '10px 16px',
           textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
@@ -184,6 +195,32 @@ function App() {
               padding: '3px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' 
             }}>
             Ignore
+          </button>
+        </div>
+      )}
+
+      {/* ── NEW: Sync Paused Banner ── */}
+      {syncPaused && (
+        <div style={{
+          background: 'var(--red)', color: '#fff', padding: '10px 16px',
+          textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <span>⚠️ Sync Paused (Session Expired)</span>
+          <button 
+            onClick={async () => {
+              try {
+                 await getGoogleAccessToken(false);
+                 setSyncPaused(false);
+              } catch (e) {}
+            }}
+            style={{ 
+              background: '#fff', color: 'var(--red)', border: 'none', 
+              padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 700 
+            }}>
+            Reconnect
           </button>
         </div>
       )}
