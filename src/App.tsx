@@ -27,7 +27,7 @@ import { AppLayout } from './components/AppLayout';
 import { ToastContainer } from './components/ToastContainer';
 import { Profile } from './pages/Profile';
 import { SubscriptionExpired } from './pages/SubscriptionExpired';
-import { verifyAccess, isSubscriptionExpired } from './auth';
+import { verifyAccess } from './auth';
 import { clearAuthCache } from './db';
 import { useToastStore } from './store';
 
