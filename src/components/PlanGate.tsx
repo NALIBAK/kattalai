@@ -31,10 +31,11 @@ export function PlanGate({ requiredPlan, featureName, children }: PlanGateProps)
       <button 
         className="btn btn-sm mt-8" 
         style={{ background: color, color: '#fff' }}
-        onClick={() => navigate('/contact')}
+        onClick={() => navigate('/upgrade')}
       >
-        Request Upgrade
+        View Plans & Upgrade
       </button>
     </div>
   );
 }
+

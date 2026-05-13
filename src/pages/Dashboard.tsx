@@ -112,7 +112,7 @@ export function Dashboard() {
           </PlanGate>
         </div>
 
-        {/* WhatsApp Broadcast Status (Plus) */}
+        {/* WhatsApp Broadcast Status (Plus+) */}
         {plan !== 'free' && (
           <div className="card mt-16" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ fontSize: '2rem' }}>📢</div>
@@ -122,6 +122,30 @@ export function Dashboard() {
               <button className="btn btn-sm mt-8" style={{ background: '#25D366', color: '#fff' }} onClick={() => navigate('/broadcast')}>
                 Open Broadcast
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Promo for Free Users */}
+        {plan === 'free' && (
+          <div className="card mt-16" style={{ 
+            border: '1px solid var(--gold)', 
+            background: 'linear-gradient(135deg, rgba(212,175,55,0.05), rgba(30,144,255,0.05))',
+            cursor: 'pointer'
+          }} onClick={() => navigate('/upgrade')}>
+            <div className="flex gap-12" style={{ alignItems: 'center' }}>
+              <div style={{ fontSize: '2.2rem' }}>🚀</div>
+              <div style={{ flex: 1 }}>
+                <div className="fw-700" style={{ color: 'var(--gold)', fontSize: '1rem' }}>Unlock Full Features</div>
+                <div className="text-xs text-muted mt-4" style={{ lineHeight: 1.4 }}>
+                  Get WhatsApp Broadcasting, Map Hub, GPS Tracking, OCR Scanning & more with Plus or Pro.
+                </div>
+                <div className="flex gap-8 mt-8">
+                  <span style={{ background: 'rgba(30,144,255,0.15)', color: '#1e90ff', padding: '2px 8px', borderRadius: 8, fontSize: '0.65rem', fontWeight: 700 }}>⭐ PLUS</span>
+                  <span style={{ background: 'rgba(212,175,55,0.15)', color: 'var(--gold)', padding: '2px 8px', borderRadius: 8, fontSize: '0.65rem', fontWeight: 700 }}>🔥 PRO</span>
+                </div>
+              </div>
+              <div style={{ color: 'var(--text-2)', fontSize: '1.2rem' }}>→</div>
             </div>
           </div>
         )}

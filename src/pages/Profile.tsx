@@ -228,6 +228,40 @@ export function Profile() {
         </button>
       </div>
 
+      {/* Upgrade Promo (for free and plus users) */}
+      {(plan === 'free' || plan === 'plus') && (
+        <div className="card mb-24" style={{ 
+          border: '1px solid var(--gold)', 
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.05), rgba(30,144,255,0.05))'
+        }}>
+          <div className="flex gap-12 mb-12" style={{ alignItems: 'center' }}>
+            <span style={{ fontSize: '2rem' }}>🚀</span>
+            <div>
+              <h4 className="m-0" style={{ color: 'var(--gold)' }}>
+                {plan === 'free' ? 'Upgrade Your Plan' : 'Upgrade to Pro'}
+              </h4>
+              <div className="text-xs text-muted mt-2">
+                {plan === 'free' 
+                  ? 'Unlock WhatsApp Broadcast, Map Hub, GPS & more' 
+                  : 'Get Map Hub, GPS Tracking, OCR Scanning & more'}
+              </div>
+            </div>
+          </div>
+          <button 
+            className="btn btn-full"
+            style={{ 
+              background: 'var(--gold)', 
+              color: '#000', 
+              border: 'none',
+              fontWeight: 700
+            }}
+            onClick={() => navigate('/upgrade')}
+          >
+            View Plans & Upgrade
+          </button>
+        </div>
+      )}
+
       <div className="card mb-24">
         <h4 className="mb-16 text-2">Manual Cloud Sync</h4>
         <p className="text-sm text-muted mb-16">

@@ -26,6 +26,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { ToastContainer } from './components/ToastContainer';
 import { Profile } from './pages/Profile';
+import { UpgradePlan } from './pages/UpgradePlan';
 import { SubscriptionExpired } from './pages/SubscriptionExpired';
 import { verifyAccess } from './auth';
 import { clearAuthCache } from './db';
@@ -288,6 +289,7 @@ function App() {
             <Route path="/settings/categories" element={<ManageCategories />} />
             <Route path="/bulk-import" element={<BulkImport />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/upgrade" element={<UpgradePlan />} />
           </Route>
         </Route>
       </Routes>
