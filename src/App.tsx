@@ -26,7 +26,9 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { ToastContainer } from './components/ToastContainer';
 import { Profile } from './pages/Profile';
-import { verifyAccess } from './auth';
+import { SubscriptionExpired } from './pages/SubscriptionExpired';
+import { verifyAccess, isSubscriptionExpired } from './auth';
+import { clearAuthCache } from './db';
 import { useToastStore } from './store';
 
 function App() {
@@ -133,7 +135,7 @@ function App() {
   };
 
   useEffect(() => {
-    // Initial app load: check cache
+    // Initial app load: check cache & ALWAYS re-verify against sheet
     const initApp = async () => {
       try {
         await loadSettings();
@@ -143,12 +145,20 @@ function App() {
         if (cache) {
           setCache(cache);
           
-          // Silent background plan refresh
-          verifyAccess(cache.email).then(newCache => {
-            if (newCache && newCache.plan !== cache.plan) {
+          // Always re-verify against the Google Sheet on every app load
+          verifyAccess(cache.email, cache.name, cache.picture).then(async newCache => {
+            if (newCache) {
+              // Always update cache with latest data from sheet
               setCache(newCache);
+            } else {
+              // User removed from sheet — clear cache and force login
+              await clearAuthCache();
+              useAuthStore.getState().logout();
             }
-          }).catch(() => {});
+          }).catch(() => {
+            // Offline — keep existing cache (will be validated by ProtectedRoute)
+            console.log('[App] Offline: using cached auth');
+          });
         }
       } catch (e) {
         console.error("Init error", e);
@@ -160,20 +170,27 @@ function App() {
   }, [setCache, setLoading, loadSettings, loadCategories, showToast]);
 
   useEffect(() => {
-    // 24-hour auto-refresh interval
+    // Periodic auto-refresh interval (every 4 hours)
     if (!user?.email) return;
     
     const interval = setInterval(async () => {
       try {
         const newCache = await verifyAccess(user.email);
-        if (newCache && newCache.plan !== plan) {
+        if (newCache) {
+          const oldPlan = useAuthStore.getState().cache?.plan;
           setCache(newCache);
-          showToast(`Subscription updated to ${newCache.plan.toUpperCase()}!`, 'success');
+          if (oldPlan && oldPlan !== newCache.plan) {
+            showToast(`Subscription updated to ${newCache.plan.toUpperCase()}!`, 'success');
+          }
+        } else {
+          // User removed from sheet
+          await clearAuthCache();
+          useAuthStore.getState().logout();
         }
       } catch (e) {
         console.error("Interval refresh failed", e);
       }
-    }, 24 * 60 * 60 * 1000);
+    }, 4 * 60 * 60 * 1000); // Every 4 hours
 
     return () => clearInterval(interval);
   }, [user?.email, plan, setCache, showToast]);
@@ -252,6 +269,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/pending" element={<PendingApproval />} />
+        <Route path="/expired" element={<SubscriptionExpired />} />
         <Route path="/contact" element={<ContactDeveloper />} />
         
         {/* Protected app routes */}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useToastStore } from '../store';
-import { initGoogleAuth, signInWithGoogle, verifyAccess, validateCachedAuth } from '../auth';
+import { initGoogleAuth, signInWithGoogle, verifyAccess, validateCachedAuth, isSubscriptionExpired } from '../auth';
 import { AuthLayout } from '../components/AuthLayout';
 
 export function Login() {
@@ -35,8 +35,12 @@ export function Login() {
       const newCache = await verifyAccess(user.email, user.name, user.picture);
       if (newCache) {
         setCache(newCache);
-        showToast(`Welcome back, ${user.name}!`, 'success');
-        navigate('/');
+        if (isSubscriptionExpired(newCache)) {
+          navigate('/expired');
+        } else {
+          showToast(`Welcome back, ${user.name}!`, 'success');
+          navigate('/');
+        }
       } else {
         navigate('/pending');
       }

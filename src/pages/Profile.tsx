@@ -208,10 +208,12 @@ export function Profile() {
             {(plan || 'free').toUpperCase()}
           </span>
         </div>
+        {plan !== 'free' && (
         <div className="flex-between mb-16">
           <span className="text-muted">Valid Until</span>
           <span className="fw-600">{user.real_expiry || 'Lifetime'}</span>
         </div>
+        )}
 
         <button 
           className="btn btn-primary btn-full mt-8" 

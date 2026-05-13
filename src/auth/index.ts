@@ -77,22 +77,23 @@ export async function verifyAccess(email: string, name?: string, picture?: strin
   try {
     const users = await fetchApprovedUsers();
     const user = users.find(u => u.email === email.toLowerCase());
-    if (!user) return null;
-
-    // Check expiry from sheet
-    if (new Date(user.expiry) < new Date()) return null;
+    if (!user) return null; // User not in sheet at all
 
     const existing = await getAuthCache();
     
     const today = new Date().toISOString().split('T')[0];
     const validUntil = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
 
+    // Free plan: always valid, no expiry
+    // Plus/Pro: keep the real expiry from sheet (even if expired) — the app will handle the expired state
+    const realExpiry = user.plan === 'free' ? '' : user.expiry;
+
     const cacheData: Omit<AuthCache, 'signature'> = { 
       email, 
       name: name || existing?.name || 'User',
       picture: picture || existing?.picture || '',
       plan: user.plan, 
-      real_expiry: user.expiry,
+      real_expiry: realExpiry,
       verified_on: today, 
       valid_until: validUntil 
     };
@@ -119,6 +120,16 @@ export function validateCachedAuth(cache: AuthCache): 'valid' | 'grace' | 'expir
   if (today <= validUntil) return 'valid';
   if (today <= gracePeriod) return 'grace';
   return 'expired';
+}
+
+// ── Subscription expiry check ─────────────────────────────────────────────────
+export function isSubscriptionExpired(cache: AuthCache): boolean {
+  // Free plan never expires
+  if (cache.plan === 'free') return false;
+  // No expiry set = not expired
+  if (!cache.real_expiry) return false;
+  // Check if the real expiry date from the sheet is in the past
+  return new Date(cache.real_expiry) < new Date();
 }
 
 export function isPlanAllowed(userPlan: string, required: 'free' | 'plus' | 'pro'): boolean {

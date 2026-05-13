@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store';
-import { validateCachedAuth } from '../auth';
+import { validateCachedAuth, isSubscriptionExpired } from '../auth';
 
 export function ProtectedRoute() {
   const { cache, isLoading } = useAuthStore();
@@ -18,11 +18,17 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // Check cache validity (detect tampering or expiration)
+  // Check cache validity (detect tampering or offline too long)
   const status = validateCachedAuth(cache);
   
   if (status === 'expired') {
-    return <Navigate to="/pending" replace />;
+    // Cache itself is invalid (tampered or 37+ days offline) — re-login
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check if the actual subscription from the sheet has expired (plus/pro only)
+  if (isSubscriptionExpired(cache)) {
+    return <Navigate to="/expired" replace />;
   }
 
   // Valid or Grace period — allow access
