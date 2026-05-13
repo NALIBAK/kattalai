@@ -4,6 +4,7 @@ import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } fr
 import { getDB, Devotee, PaymentEntry, MessageTemplate, upsertDevotee } from '../db';
 import { restoreFromBackupBlob } from '../utils/backup';
 import { allowPush } from '../utils/syncLock';
+import { PlanGate } from '../components/PlanGate';
 import JSZip from 'jszip';
 
 export function Settings() {
@@ -365,7 +366,8 @@ export function Settings() {
             </div>
           </div>
 
-          {/* ── Message Templates Manager ── */}
+          {/* ── Message Templates Manager (Plus+) ── */}
+          <PlanGate requiredPlan="plus" featureName="Message Templates">
           <div className="card mb-16">
             <div className="flex-between mb-16">
               <h4 className="text-gold m-0">🛠️ Message Templates</h4>
@@ -410,6 +412,7 @@ export function Settings() {
               </div>
             )}
           </div>
+          </PlanGate>
 
           {/* ── VCF / Contacts Import & Export ── */}
           <div className="card mb-16">
