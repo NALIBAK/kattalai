@@ -4,10 +4,12 @@ import { useToastStore } from '../store';
 import { getDeletedDevotees, restoreDevotee, permanentlyDeleteDevotee, emptyRecycleBin } from '../db';
 import type { DeletedDevotee } from '../db';
 import { allowPush } from '../utils/syncLock';
+import { useTranslation } from '../utils/i18n';
 
 export function RecycleBin() {
   const navigate = useNavigate();
   const { showToast } = useToastStore();
+  const { t } = useTranslation();
 
   const [records, setRecords] = useState<DeletedDevotee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,11 +23,11 @@ export function RecycleBin() {
       const data = await getDeletedDevotees();
       setRecords(data);
     } catch {
-      showToast('Failed to load recycle bin', 'error');
+      showToast(t('bin_restore_failed'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -34,41 +36,41 @@ export function RecycleBin() {
   }, [loadRecords]);
 
   const handleRestore = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to restore devotee "${name}" along with all their family members and payment history?`)) {
+    if (window.confirm(t('bin_confirm_restore').replace('{name}', name))) {
       try {
         await restoreDevotee(id);
         allowPush(); // Unlock auto-push since user made a genuine edit
-        showToast(`"${name}" restored successfully!`, 'success');
+        showToast(t('bin_restore_success').replace('{name}', name), 'success');
         loadRecords(true);
       } catch {
-        showToast('Restoration failed', 'error');
+        showToast(t('bin_restore_failed'), 'error');
       }
     }
   };
 
   const handlePermanentDelete = async (id: string, name: string) => {
-    if (window.confirm(`⚠️ WARNING: Are you sure you want to permanently delete devotee "${name}"? This will permanently erase their profile, family members, and payments. This action CANNOT be undone.`)) {
+    if (window.confirm(t('bin_confirm_perm_delete').replace('{name}', name))) {
       try {
         await permanentlyDeleteDevotee(id);
         allowPush(); // Unlock auto-push since user made a genuine edit
-        showToast(`"${name}" permanently deleted`, 'info');
+        showToast(t('bin_perm_deleted_success').replace('{name}', name), 'info');
         loadRecords(true);
       } catch {
-        showToast('Delete failed', 'error');
+        showToast(t('bin_delete_failed'), 'error');
       }
     }
   };
 
   const handleEmptyBin = async () => {
     if (records.length === 0) return;
-    if (window.confirm('🚨 CRITICAL WARNING: Are you sure you want to EMPTY the Recycle Bin? All deleted devotees, their family members, and payments will be PERMANENTLY lost. This action CANNOT be undone.')) {
+    if (window.confirm(t('bin_confirm_empty'))) {
       try {
         await emptyRecycleBin();
         allowPush(); // Unlock auto-push since user made a genuine edit
-        showToast('Recycle Bin emptied completely!', 'success');
+        showToast(t('bin_empty_success'), 'success');
         loadRecords(true);
       } catch {
-        showToast('Failed to empty bin', 'error');
+        showToast(t('bin_empty_failed'), 'error');
       }
     }
   };
@@ -98,16 +100,16 @@ export function RecycleBin() {
   return (
     <div>
       {/* Header section with back and empty bin button */}
-      <div className="section flex-between mb-24">
+      <div className="section flex-between mb-24" style={{ flexWrap: 'wrap', gap: 12 }}>
         <div className="flex-center gap-12">
           <button className="btn-icon" onClick={() => navigate('/settings')} title="Back to Settings">
             🔙
           </button>
-          <h2 className="mb-0">Recycle Bin</h2>
+          <h2 className="mb-0">{t('bin_title')}</h2>
         </div>
         {records.length > 0 && (
           <button className="btn btn-sm btn-danger flex-center gap-4" onClick={handleEmptyBin}>
-            🗑️ Empty Bin
+            {t('bin_empty_btn')}
           </button>
         )}
       </div>
@@ -117,7 +119,7 @@ export function RecycleBin() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: '1.5rem' }}>♻️</span>
           <div className="text-sm text-2" style={{ lineHeight: 1.4 }}>
-            Devotees deleted from active lists are held here. Restoring them brings back all associated <b>family records</b> and <b>payment histories</b> instantly.
+            {t('bin_desc')}
           </div>
         </div>
       </div>
@@ -128,7 +130,7 @@ export function RecycleBin() {
           <span>🔍</span>
           <input
             type="text"
-            placeholder="Search deleted name, phone, city..."
+            placeholder={t('bin_search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -146,12 +148,12 @@ export function RecycleBin() {
         <div className="empty-state card">
           <div className="empty-icon" style={{ filter: 'grayscale(0.2)' }}>♻️</div>
           <div className="empty-title">
-            {searchQuery ? 'No search matches' : 'Recycle Bin is Empty'}
+            {searchQuery ? t('bin_no_matches') : t('bin_empty_state')}
           </div>
           <p>
             {searchQuery
-              ? 'Try modifying your search query.'
-              : 'Deleted devotees details will appear here.'}
+              ? t('bin_try_modify')
+              : t('bin_empty_details')}
           </p>
         </div>
       ) : (
@@ -174,7 +176,7 @@ export function RecycleBin() {
                 onMouseLeave={(e) => (e.currentTarget.style.borderLeftColor = 'var(--border)')}
               >
                 {/* Devotee Info row */}
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <div
                     className="devotee-avatar"
                     style={{
@@ -186,7 +188,7 @@ export function RecycleBin() {
                   >
                     {d.name.charAt(0).toUpperCase()}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
                     <div className="fw-700" style={{ fontSize: '0.95rem', marginBottom: 2 }}>
                       {d.name}
                     </div>
@@ -194,19 +196,19 @@ export function RecycleBin() {
                       📱 {d.phone} {d.city && `| 📍 ${d.city}`}
                     </div>
                     <div className="text-xs text-red fw-600">
-                      🕒 Deleted: {formatDate(record.deleted_at)}
+                      🕒 {t('bin_deleted_label')} {formatDate(record.deleted_at)}
                     </div>
                   </div>
 
                   {/* Actions buttons */}
-                  <div className="flex gap-8" style={{ alignSelf: 'center' }}>
+                  <div className="flex gap-8" style={{ alignSelf: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     <button
                       className="btn btn-sm btn-ghost flex-center"
                       onClick={() => handleRestore(record.id, d.name)}
                       title="Restore Devotee"
                       style={{ minWidth: 36, padding: '4px 8px' }}
                     >
-                      ↺ Restore
+                      {t('bin_restore_btn')}
                     </button>
                     <button
                       className="btn btn-sm btn-danger flex-center"
@@ -214,7 +216,7 @@ export function RecycleBin() {
                       title="Permanently Delete"
                       style={{ minWidth: 36, padding: '4px 8px' }}
                     >
-                      🗑️ Permanent
+                      {t('bin_permanent_btn')}
                     </button>
                   </div>
                 </div>
@@ -224,13 +226,13 @@ export function RecycleBin() {
                 {/* Sub-records summary badges */}
                 <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
                   <span className="badge badge-muted">
-                    👪 {record.family_members.length} Family Members
+                    👪 {record.family_members.length} {t('bin_family_badge')}
                   </span>
                   <span className="badge badge-muted">
-                    💳 {record.payment_history.length} Payment Entries
+                    💳 {record.payment_history.length} {t('bin_payments_badge')}
                   </span>
                   <span className="badge badge-gold">
-                    💰 ₹{d.annual_amount} Annual
+                    💰 ₹{d.annual_amount} {t('bin_annual_badge')}
                   </span>
                 </div>
               </div>

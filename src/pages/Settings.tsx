@@ -60,7 +60,7 @@ export function Settings() {
     setIsAddingTemplate(false);
     setTempLabel('');
     setTempText('');
-    showToast('Template added!', 'success');
+    showToast(t('settings_tmpl_added'), 'success');
   };
 
   const handleUpdateTemplate = async () => {
@@ -69,13 +69,13 @@ export function Settings() {
     setEditingTemplate(null);
     setTempLabel('');
     setTempText('');
-    showToast('Template updated!', 'success');
+    showToast(t('settings_tmpl_updated'), 'success');
   };
 
   const handleRemoveTemplate = async (id: string) => {
-    if (window.confirm('Delete this template?')) {
+    if (window.confirm(t('settings_tmpl_confirm_delete'))) {
       await removeTemplate(id);
-      showToast('Template deleted', 'info');
+      showToast(t('settings_tmpl_deleted'), 'info');
     }
   };
 
@@ -271,7 +271,7 @@ export function Settings() {
     const text = await file.text();
     const contacts = parseVCF(text);
     if (contacts.length === 0) {
-      showToast('No contacts found in this VCF file', 'error');
+      showToast(t('settings_vcf_no_contacts'), 'error');
       return;
     }
     setVcfContacts(contacts);
@@ -283,8 +283,8 @@ export function Settings() {
 
   const handleVCFImport = async () => {
     const toImport = vcfContacts.filter(c => c.selected);
-    if (toImport.length === 0) { showToast('No contacts selected', 'error'); return; }
-    if (!vcfCategory) { showToast('Please select a default category', 'error'); return; }
+    if (toImport.length === 0) { showToast(t('settings_vcf_no_selected'), 'error'); return; }
+    if (!vcfCategory) { showToast(t('settings_vcf_select_default_cat'), 'error'); return; }
 
     setVcfImporting(true);
     try {
@@ -317,12 +317,12 @@ export function Settings() {
       }
       await refreshDevotees();
       allowPush(); // Unlock auto-push
-      showToast(`✅ Imported ${toImport.length} contacts as devotees!`, 'success');
+      showToast(t('settings_vcf_success').replace('{count}', String(toImport.length)), 'success');
       setVcfModalOpen(false);
       setVcfContacts([]);
     } catch (err) {
       const error = err as { message?: string };
-      showToast(error.message || 'Import failed', 'error');
+      showToast(error.message || t('settings_backup_restore_failed'), 'error');
     } finally {
       setVcfImporting(false);
     }
@@ -369,9 +369,9 @@ export function Settings() {
       a.click();
       URL.revokeObjectURL(url);
       
-      showToast('Backup Exported!', 'success');
+      showToast(t('settings_backup_exported'), 'success');
     } catch {
-      showToast('Export failed', 'error');
+      showToast(t('settings_backup_export_failed'), 'error');
     } finally {
       setIsExporting(false);
     }
@@ -381,7 +381,7 @@ export function Settings() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (!window.confirm('⚠️ WARNING: This will overwrite current conflicting records. Ensure this is a valid backup. Continue?')) {
+    if (!window.confirm(t('settings_backup_confirm_restore'))) {
       return;
     }
 
@@ -391,10 +391,10 @@ export function Settings() {
       await refreshDevotees();
       await loadCategories();
       allowPush(); // Unlock auto-push
-      showToast('Backup restored successfully!', 'success');
+      showToast(t('settings_backup_restore_success'), 'success');
 
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : 'Import failed. Invalid format.';
+      const errMsg = err instanceof Error ? err.message : t('settings_backup_restore_failed');
       showToast(errMsg, 'error');
     } finally {
       setIsImporting(false);
@@ -475,8 +475,8 @@ export function Settings() {
           <PlanGate requiredPlan="plus" featureName="Message Templates">
           <div className="card mb-16">
             <div className="flex-between mb-16">
-              <h4 className="text-gold m-0">🛠️ Message Templates</h4>
-              <button className="btn btn-primary btn-sm" onClick={startAddTemplate}>+ Add New</button>
+              <h4 className="text-gold m-0">{t('settings_templates')}</h4>
+              <button className="btn btn-primary btn-sm" onClick={startAddTemplate}>{t('settings_add_template')}</button>
             </div>
 
             <div className="flex-col gap-12">
@@ -496,22 +496,22 @@ export function Settings() {
 
             {(isAddingTemplate || editingTemplate) && (
               <div className="mt-24 p-16" style={{ background: 'var(--surface-3)', borderRadius: 12, border: '1.5px solid var(--gold)' }}>
-                <h5 className="mb-12">{isAddingTemplate ? '🆕 New Template' : '✏️ Edit Template'}</h5>
+                <h5 className="mb-12">{isAddingTemplate ? t('settings_new_template') : t('settings_edit_template')}</h5>
                 <div className="form-group">
-                  <label className="form-label">Template Label</label>
+                  <label className="form-label">{t('settings_tmpl_label')}</label>
                   <input className="form-input" value={tempLabel} onChange={e => setTempLabel(e.target.value)} placeholder="e.g. Festival Wishes" />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Message Text</label>
+                  <label className="form-label">{t('settings_tmpl_text')}</label>
                   <textarea className="form-input" rows={6} value={tempText} onChange={e => setTempText(e.target.value)} placeholder="Type your message..." />
                   <div className="text-xs text-muted mt-4">
-                    Placeholders: {`{name}, {city}, {nakshathiram}, {expiry_date}, {balance}`}
+                    {t('settings_tmpl_placeholders')} {`{name}, {city}, {nakshathiram}, {expiry_date}, {balance}`}
                   </div>
                 </div>
                 <div className="grid-2">
-                  <button className="btn btn-ghost" onClick={() => { setIsAddingTemplate(false); setEditingTemplate(null); }}>Cancel</button>
+                  <button className="btn btn-ghost" onClick={() => { setIsAddingTemplate(false); setEditingTemplate(null); }}>{t('settings_tmpl_cancel')}</button>
                   <button className="btn btn-primary" onClick={isAddingTemplate ? handleAddTemplate : handleUpdateTemplate} disabled={!tempLabel.trim() || !tempText.trim()}>
-                    💾 Save Template
+                    {t('settings_tmpl_save')}
                   </button>
                 </div>
               </div>
@@ -544,21 +544,21 @@ export function Settings() {
           </div>
 
           {/* ── Custom Categories ── */}
-          <div className="card mb-16 flex-between">
+          <div className="card mb-16 flex-between" style={{ flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h4 className="m-0 text-gold mb-4">{t('settings_categories')}</h4>
               <div className="text-sm text-2">{t('settings_categories_desc')}</div>
             </div>
-            <button className="btn btn-ghost" onClick={() => navigate('/settings/categories')}>Manage</button>
+            <button className="btn btn-ghost" onClick={() => navigate('/settings/categories')}>{t('settings_manage')}</button>
           </div>
 
           {/* ── Recycle Bin ── */}
-          <div className="card mb-16 flex-between">
+          <div className="card mb-16 flex-between" style={{ flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h4 className="m-0 text-gold mb-4">{t('settings_recycle_bin')}</h4>
               <div className="text-sm text-2">{t('settings_recycle_desc')}</div>
             </div>
-            <button className="btn btn-ghost" onClick={() => navigate('/settings/recycle-bin')}>View</button>
+            <button className="btn btn-ghost" onClick={() => navigate('/settings/recycle-bin')}>{t('settings_view')}</button>
           </div>
 
           {/* Backup & Restore */}
@@ -592,25 +592,27 @@ export function Settings() {
 
             <div className="flex-between mb-16">
               <div>
-                <h3 className="mb-0">📤 Import Contacts</h3>
-                <div className="text-xs text-muted">{vcfContacts.filter(c => c.selected).length} of {vcfContacts.length} selected</div>
+                <h3 className="mb-0">{t('settings_vcf_import_title')}</h3>
+                <div className="text-xs text-muted">
+                  {vcfContacts.filter(c => c.selected).length} {t('settings_vcf_of')} {vcfContacts.length} {t('settings_vcf_selected_count')}
+                </div>
               </div>
               <button className="btn-icon" onClick={() => setVcfModalOpen(false)}>✖</button>
             </div>
 
             {/* Default Category */}
             <div className="form-group">
-              <label className="form-label">Assign to Category *</label>
+              <label className="form-label">{t('settings_vcf_assign_cat')}</label>
               <select className="form-input" value={vcfCategory} onChange={e => setVcfCategory(e.target.value)}>
-                <option value="">-- Select Category --</option>
+                <option value="">{t('settings_vcf_select_cat_placeholder')}</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name} {c.name_ta ? `(${c.name_ta})` : ''}</option>)}
               </select>
             </div>
 
             {/* Select All / None */}
             <div className="flex gap-8 mb-12">
-              <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(true)}>✅ Select All</button>
-              <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(false)}>⬜ Deselect All</button>
+              <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(true)}>{t('settings_vcf_select_all')}</button>
+              <button className="btn btn-ghost btn-sm flex-1" onClick={() => toggleAllVcf(false)}>{t('settings_vcf_deselect_all')}</button>
             </div>
 
             {/* Contact list */}
@@ -656,7 +658,7 @@ export function Settings() {
               onClick={handleVCFImport}
               disabled={vcfImporting || vcfContacts.filter(c => c.selected).length === 0 || !vcfCategory}
             >
-              {vcfImporting ? '⏳ Importing...' : `📥 Import ${vcfContacts.filter(c => c.selected).length} Contacts`}
+              {vcfImporting ? t('settings_vcf_importing') : t('settings_vcf_import_btn').replace('{count}', String(vcfContacts.filter(c => c.selected).length))}
             </button>
           </div>
         </div>

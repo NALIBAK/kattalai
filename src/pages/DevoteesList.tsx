@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getSubscriptionStatus, getPaymentStatus, deleteDevotee } from '../db';
 import { allowPush } from '../utils/syncLock';
+import { useTranslation } from '../utils/i18n';
 
 export function DevoteesList() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { devotees, load, loading, searchQuery, setSearch, filterCity, setFilterCity, filterStatus, setFilterStatus, filterPayment, setFilterPayment, sortOption, setSortOption } = useDevoteeStore();
   const { categories } = useCategoryStore();
   const { showToast } = useToastStore();
@@ -72,27 +74,29 @@ export function DevoteesList() {
     if (selectedIds.size === 0) return;
     const selectedDevs = devotees.filter(d => selectedIds.has(d.id));
     
+    const isTa = t('save') === 'சேமி';
     // Format: Name, Address, City - Phone
     const textData = selectedDevs.map((d, index) => {
       const fullAddress = [d.address, d.city].filter(Boolean).join(', ');
-      return `${index + 1}. ${d.name}\n   Address: ${fullAddress}\n   Phone: ${d.phone}`;
+      return `${index + 1}. ${d.name}\n   ${isTa ? 'முகவரி' : 'Address'}: ${fullAddress}\n   ${isTa ? 'தொலைபேசி' : 'Phone'}: ${d.phone}`;
     }).join('\n\n');
 
-    const shareText = `Selected Devotees:\n\n${textData}`;
+    const shareTitle = `${t('selected')} ${t('nav_devotees')}`;
+    const shareText = `${shareTitle}:\n\n${textData}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Selected Devotees',
+          title: shareTitle,
           text: shareText,
         });
       } catch {
         navigator.clipboard.writeText(shareText);
-        showToast('Copied to clipboard!', 'success');
+        showToast(t('copied_clipboard'), 'success');
       }
     } else {
       navigator.clipboard.writeText(shareText);
-      showToast('Copied to clipboard!', 'success');
+      showToast(t('copied_clipboard'), 'success');
     }
     
     setIsSelectMode(false);
@@ -101,7 +105,12 @@ export function DevoteesList() {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`⚠️ Are you sure you want to delete ${selectedIds.size} devotees? This cannot be undone.`)) {
+    const isTa = t('save') === 'சேமி';
+    const confirmMsg = isTa 
+      ? `⚠️ நீங்கள் ${selectedIds.size} பக்தர்களை நீக்க விரும்புகிறீர்களா? இதை மாற்றியமைக்க முடியாது.`
+      : `⚠️ Are you sure you want to delete ${selectedIds.size} devotees? This cannot be undone.`;
+      
+    if (!window.confirm(confirmMsg)) {
       return;
     }
     
@@ -109,8 +118,12 @@ export function DevoteesList() {
       await deleteDevotee(id);
     }
     
-    showToast(`Deleted ${selectedIds.size} devotees`, 'success');
-    allowPush(); // Unlock auto-push — user made a genuine edit
+    const successMsg = isTa
+      ? `${selectedIds.size} பக்தர்கள் நீக்கப்பட்டனர்.`
+      : `Deleted ${selectedIds.size} devotees`;
+      
+    showToast(successMsg, 'success');
+    allowPush();
     setIsSelectMode(false);
     setSelectedIds(new Set());
     load();
@@ -120,23 +133,23 @@ export function DevoteesList() {
     <div>
       {/* Header */}
       <div className="flex-between mb-16" style={{ flexWrap: 'wrap', gap: '12px' }}>
-        <h2 className="mb-0">Devotees ({filtered.length})</h2>
+        <h2 className="mb-0">{t('nav_devotees')} ({filtered.length})</h2>
         <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
           <button className="btn btn-ghost btn-sm" onClick={() => {
               setIsSelectMode(!isSelectMode);
               if (isSelectMode) setSelectedIds(new Set());
             }}
             style={{ color: isSelectMode ? 'var(--gold)' : 'var(--text)', borderColor: isSelectMode ? 'var(--gold)' : 'transparent', padding: '0 8px' }}>
-            {isSelectMode ? 'Cancel' : '✓ Select'}
+            {isSelectMode ? t('cancel') : `✓ ${t('select')}`}
           </button>
           {!isSelectMode && (
             <>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/bulk-import')}
                 title="Bulk Import (Pro)" style={{ color: 'var(--gold)', borderColor: 'var(--gold)', padding: '0 8px' }}>
-                📦 Bulk
+                📦 {t('bulk')}
               </button>
               <button className="btn btn-primary btn-sm" onClick={() => navigate('/devotees/new')} style={{ padding: '0 12px' }}>
-                ➕ Add
+                {t('devotees_add_btn')}
               </button>
             </>
           )}
@@ -149,7 +162,7 @@ export function DevoteesList() {
           <span>🔍</span>
           <input 
             type="text" 
-            placeholder="Search name or phone..." 
+            placeholder={t('devotees_search')} 
             value={searchQuery}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -177,8 +190,8 @@ export function DevoteesList() {
       ) : filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">👥</div>
-          <div className="empty-title">No devotees found</div>
-          <p>Try adjusting your search or filters.</p>
+          <div className="empty-title">{t('devotees_empty')}</div>
+          <p>{t('save') === 'சேமி' ? 'தேடல் அல்லது வடிகட்டிகளை மாற்றிப் பார்க்கவும்.' : 'Try adjusting your search or filters.'}</p>
         </div>
       ) : (
         <div className="flex-col gap-12">
@@ -211,20 +224,20 @@ export function DevoteesList() {
                 <div className="devotee-info" style={{ flex: 1 }}>
                   <div className="flex-between">
                     <div className="devotee-name">{devotee.name}</div>
-                    {isPending && <div className="text-red text-xs fw-700">₹{devotee.annual_amount - devotee.amount_paid} Due</div>}
+                    {isPending && <div className="text-red text-xs fw-700">₹{devotee.annual_amount - devotee.amount_paid} {t('due')}</div>}
                   </div>
                   <div className="devotee-meta mb-4">
                     <span>📱 {devotee.phone}</span>
                     <span>📍 {devotee.city}</span>
                   </div>
                   <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
-                    {subStatus === 'active' && <span className="badge badge-green">Active</span>}
-                    {subStatus === 'expiring' && <span className="badge badge-amber">Expiring</span>}
-                    {subStatus === 'expired' && <span className="badge badge-red">Expired</span>}
+                    {subStatus === 'active' && <span className="badge badge-green">{t('active')}</span>}
+                    {subStatus === 'expiring' && <span className="badge badge-amber">{t('expiring')}</span>}
+                    {subStatus === 'expired' && <span className="badge badge-red">{t('expired')}</span>}
                     
-                    {payStatus === 'paid' && <span className="badge badge-green">Paid</span>}
-                    {payStatus === 'partial' && <span className="badge badge-amber">Partial</span>}
-                    {payStatus === 'unpaid' && <span className="badge badge-red">Unpaid</span>}
+                    {payStatus === 'paid' && <span className="badge badge-green">{t('paid')}</span>}
+                    {payStatus === 'partial' && <span className="badge badge-amber">{t('partial')}</span>}
+                    {payStatus === 'unpaid' && <span className="badge badge-red">{t('unpaid')}</span>}
                     
                     {getCatBadge(devotee.category)}
                   </div>
@@ -242,15 +255,15 @@ export function DevoteesList() {
           background: '#000', borderRadius: 12, padding: '12px 16px',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 100,
-          border: '1px solid var(--gold)'
+          border: '1px solid var(--gold)', flexWrap: 'wrap', gap: 12
         }}>
-          <span className="fw-700 text-gold">{selectedIds.size} Selected</span>
+          <span className="fw-700 text-gold">{selectedIds.size} {t('selected')}</span>
           <div className="flex gap-8">
              <button className="btn btn-ghost btn-sm text-red" onClick={handleDeleteSelected}>
-               🗑️ Delete
+                🗑️ {t('delete')}
              </button>
              <button className="btn btn-primary btn-sm" onClick={handleShareSelected}>
-               📤 Share
+                📤 {t('devotees_share')}
              </button>
           </div>
         </div>
@@ -262,33 +275,33 @@ export function DevoteesList() {
           <div className="sheet">
             <div className="sheet-handle"></div>
             <div className="flex-between mb-16">
-              <h3 className="mb-0">Filter & Sort</h3>
+              <h3 className="mb-0">{t('filter_sort')}</h3>
               <button className="btn-icon" onClick={() => {
                 setFilterCity(''); setFilterCategory(''); setFilterStatus(''); setFilterPayment(''); setSortOption('name_asc');
               }}>🔄</button>
             </div>
             
             <div className="form-group">
-              <label className="form-label">Sort By</label>
+              <label className="form-label">{t('sort_by')}</label>
               <select className="form-input" value={sortOption} onChange={(e) => setSortOption(e.target.value as 'name_asc' | 'expiry_desc' | 'payment_desc')}>
-                <option value="name_asc">Name (A-Z)</option>
-                <option value="expiry_desc">Expiring Earliest</option>
-                <option value="payment_desc">Highest Payment Due</option>
+                <option value="name_asc">{t('save') === 'சேமி' ? 'பெயர் (A-Z)' : 'Name (A-Z)'}</option>
+                <option value="expiry_desc">{t('save') === 'சேமி' ? 'முதலில் காலாவதியாவது' : 'Expiring Earliest'}</option>
+                <option value="payment_desc">{t('save') === 'சேமி' ? 'அதிகபட்ச நிலுவை' : 'Highest Payment Due'}</option>
               </select>
             </div>
 
             <div className="grid-2">
               <div className="form-group">
-                <label className="form-label">City</label>
+                <label className="form-label">{t('save') === 'சேமி' ? 'நகரம் / ஊர்' : 'City'}</label>
                 <select className="form-input" value={filterCity} onChange={(e) => setFilterCity(e.target.value)}>
-                  <option value="">All Cities</option>
+                  <option value="">{t('all_cities')}</option>
                   {Array.from(new Set(devotees.map(d => d.city).filter(Boolean))).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Category</label>
+                <label className="form-label">{t('print_category')}</label>
                 <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                  <option value="">All Categories</option>
+                  <option value="">{t('all_categories')}</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
@@ -296,26 +309,26 @@ export function DevoteesList() {
 
             <div className="grid-2">
               <div className="form-group">
-                <label className="form-label">Subscription</label>
+                <label className="form-label">{t('save') === 'சேமி' ? 'சந்தா நிலை' : 'Subscription'}</label>
                 <select className="form-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as '' | 'active' | 'expiring' | 'expired')}>
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="expiring">Expiring Soon</option>
-                  <option value="expired">Expired</option>
+                  <option value="">{t('all_statuses')}</option>
+                  <option value="active">{t('active')}</option>
+                  <option value="expiring">{t('save') === 'சேமி' ? 'விரைவில் முடிவது' : 'Expiring Soon'}</option>
+                  <option value="expired">{t('expired')}</option>
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Payments</label>
+                <label className="form-label">{t('save') === 'சேமி' ? 'கணக்கு நிலை' : 'Payments'}</label>
                 <select className="form-input" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as '' | 'paid' | 'partial' | 'unpaid')}>
-                  <option value="">All Payments</option>
-                  <option value="paid">Fully Paid</option>
-                  <option value="partial">Partial</option>
-                  <option value="unpaid">Unpaid</option>
+                  <option value="">{t('all_payments')}</option>
+                  <option value="paid">{t('save') === 'சேமி' ? 'முழுமையாக செலுத்தியது' : 'Fully Paid'}</option>
+                  <option value="partial">{t('partial')}</option>
+                  <option value="unpaid">{t('unpaid')}</option>
                 </select>
               </div>
             </div>
 
-            <button className="btn btn-primary w-full mt-16" onClick={() => setIsFilterOpen(false)}>Apply Filters</button>
+            <button className="btn btn-primary w-full mt-16" onClick={() => setIsFilterOpen(false)}>{t('apply_filters')}</button>
           </div>
         </div>
       )}
