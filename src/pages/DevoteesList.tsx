@@ -86,7 +86,7 @@ export function DevoteesList() {
           title: 'Selected Devotees',
           text: shareText,
         });
-      } catch (e) {
+      } catch {
         navigator.clipboard.writeText(shareText);
         showToast('Copied to clipboard!', 'success');
       }
@@ -270,7 +270,7 @@ export function DevoteesList() {
             
             <div className="form-group">
               <label className="form-label">Sort By</label>
-              <select className="form-input" value={sortOption} onChange={(e) => setSortOption(e.target.value as any)}>
+              <select className="form-input" value={sortOption} onChange={(e) => setSortOption(e.target.value as 'name_asc' | 'expiry_desc' | 'payment_desc')}>
                 <option value="name_asc">Name (A-Z)</option>
                 <option value="expiry_desc">Expiring Earliest</option>
                 <option value="payment_desc">Highest Payment Due</option>
@@ -297,7 +297,7 @@ export function DevoteesList() {
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Subscription</label>
-                <select className="form-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+                <select className="form-input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as '' | 'active' | 'expiring' | 'expired')}>
                   <option value="">All Statuses</option>
                   <option value="active">Active</option>
                   <option value="expiring">Expiring Soon</option>
@@ -306,7 +306,7 @@ export function DevoteesList() {
               </div>
               <div className="form-group">
                 <label className="form-label">Payments</label>
-                <select className="form-input" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as any)}>
+                <select className="form-input" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as '' | 'paid' | 'partial' | 'unpaid')}>
                   <option value="">All Payments</option>
                   <option value="paid">Fully Paid</option>
                   <option value="partial">Partial</option>

@@ -42,7 +42,7 @@ export function CoverPrint() {
     window.print();
   };
 
-  const updateSetting = (key: keyof PrintSettings, value: any) => {
+  const updateSetting = <K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 

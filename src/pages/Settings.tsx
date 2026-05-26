@@ -204,7 +204,7 @@ export function Settings() {
         }
         // TEL (phone number)
         if (/^TEL/i.test(line)) {
-          let rawNum = line.replace(/^TEL[^:]*:/i, '').trim();
+          const rawNum = line.replace(/^TEL[^:]*:/i, '').trim();
           let num = rawNum.replace(/[\s\-().]/g, '');
           
           // 1. Detect country code explicitly if '+' is present
@@ -318,8 +318,9 @@ export function Settings() {
       showToast(`✅ Imported ${toImport.length} contacts as devotees!`, 'success');
       setVcfModalOpen(false);
       setVcfContacts([]);
-    } catch (err: any) {
-      showToast(err.message || 'Import failed', 'error');
+    } catch (err) {
+      const error = err as { message?: string };
+      showToast(error.message || 'Import failed', 'error');
     } finally {
       setVcfImporting(false);
     }
@@ -367,7 +368,7 @@ export function Settings() {
       URL.revokeObjectURL(url);
       
       showToast('Backup Exported!', 'success');
-    } catch (e) {
+    } catch {
       showToast('Export failed', 'error');
     } finally {
       setIsExporting(false);
@@ -390,8 +391,9 @@ export function Settings() {
       allowPush(); // Unlock auto-push
       showToast('Backup restored successfully!', 'success');
 
-    } catch (err: any) {
-      showToast(err.message || 'Import failed. Invalid format.', 'error');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Import failed. Invalid format.';
+      showToast(errMsg, 'error');
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

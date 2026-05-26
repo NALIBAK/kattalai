@@ -78,9 +78,10 @@ export function GDriveGate({ children }: { children: React.ReactNode }) {
       await setGDriveSetting('gDriveLinked', true);
       await setGDriveSetting('gDriveAutoSync', true);
 
-    } catch (e: any) {
-      console.error('[GDriveGate] Link failed:', e);
-      showToast(e.message || 'Cloud sync setup failed. Please try again.', 'error');
+    } catch (e) {
+      const err = e as { message?: string };
+      console.error('[GDriveGate] Link failed:', err);
+      showToast(err.message || 'Cloud sync setup failed. Please try again.', 'error');
     } finally {
       setIsLinking(false);
       setLinkStep('idle');

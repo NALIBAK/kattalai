@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // Re-apply Leaflet icon fix just in case
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -16,10 +16,22 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom numbered marker generator for active route stops
-const getStopIcon = (stopNumber: number, isVisited: boolean) => {
+const getStopIcon = (stopNumber: number, isVisited: boolean, isCurrent: boolean) => {
+  let bg = 'var(--gold)';
+  let border = '2px solid #fff';
+  let transform = '';
+  let boxShadow = '0 3px 8px rgba(0,0,0,0.5)';
+  if (isVisited) {
+    bg = 'var(--green)';
+  } else if (isCurrent) {
+    bg = 'var(--red)';
+    border = '2px solid var(--gold)';
+    transform = 'transform: scale(1.15);';
+    boxShadow = '0 0 12px var(--gold)';
+  }
   return L.divIcon({
     html: `<div style="
-      background: ${isVisited ? 'var(--green)' : 'var(--gold)'};
+      background: ${bg};
       color: #000;
       width: 28px;
       height: 28px;
@@ -28,10 +40,11 @@ const getStopIcon = (stopNumber: number, isVisited: boolean) => {
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
-      border: 2px solid #fff;
+      box-shadow: ${boxShadow};
+      border: ${border};
       font-size: 0.8rem;
       transition: all 0.2s;
+      ${transform}
     ">${stopNumber}</div>`,
     className: 'custom-stop-marker',
     iconSize: [28, 28],
@@ -213,7 +226,7 @@ export function MapHub() {
         setIsTourActive(true);
         showToast(`🚚 Tour started! optimal path computed.`, 'success');
       },
-      (err) => {
+      () => {
         showToast('GPS failed. Starting from first devotee location.', 'info');
         const fallback = selectedDevs[0];
         setStartCoords([fallback.location_lat!, fallback.location_lng!]);
@@ -389,7 +402,7 @@ export function MapHub() {
                     <Marker 
                       key={d.id} 
                       position={[d.location_lat!, d.location_lng!]}
-                      icon={getStopIcon(index + 1, isVisited)}
+                      icon={getStopIcon(index + 1, isVisited, isCurrent)}
                     >
                       <Popup>
                         <div style={{ textAlign: 'center', width: 140 }}>

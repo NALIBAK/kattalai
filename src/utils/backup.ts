@@ -74,7 +74,7 @@ export async function restoreFromBackupBlob(blob: Blob): Promise<void> {
 /**
  * Previews the contents of a backup blob without restoring it.
  */
-export async function previewBackupBlob(blob: Blob): Promise<{ devoteeCount: number, date: string, rawData: any }> {
+export async function previewBackupBlob(blob: Blob): Promise<{ devoteeCount: number, date: string, rawData: unknown }> {
   const zip = new JSZip();
   const loadedZip = await zip.loadAsync(blob);
   const jsonFile = loadedZip.file('kattalai_db_backup.json');

@@ -116,7 +116,19 @@ export function BulkImport() {
   const { defaultAmount } = useSettingsStore();
   const { showToast } = useToastStore();
 
-  // Pro gate
+  const [step, setStep] = useState<Step>('input');
+  const [inputTab, setInputTab] = useState<InputTab>('text');
+  const [rawText, setRawText] = useState('');
+  const [records, setRecords] = useState<ParsedRecord[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editTarget, setEditTarget] = useState<ParsedRecord | null>(null);
+  const [globalCategory, setGlobalCategory] = useState<string>('');
+  const [scanning, setScanning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Pro gate (safely declared after hooks to obey React Rules of Hooks)
   if (!isPlanAllowed(plan ?? 'free', 'pro')) {
     return (
       <div style={{ padding:24 }}>
@@ -131,18 +143,6 @@ export function BulkImport() {
       </div>
     );
   }
-
-  const [step, setStep] = useState<Step>('input');
-  const [inputTab, setInputTab] = useState<InputTab>('text');
-  const [rawText, setRawText] = useState('');
-  const [records, setRecords] = useState<ParsedRecord[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [editTarget, setEditTarget] = useState<ParsedRecord | null>(null);
-  const [globalCategory, setGlobalCategory] = useState<string>('');
-  const [scanning, setScanning] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // ── Input handlers ─────────────────────────────────────────────────────────
 
@@ -508,7 +508,11 @@ export function BulkImport() {
                     <input type="checkbox" checked={selected.has(r._key)}
                       onChange={e => {
                         const next = new Set(selected);
-                        e.target.checked ? next.add(r._key) : next.delete(r._key);
+                        if (e.target.checked) {
+                          next.add(r._key);
+                        } else {
+                          next.delete(r._key);
+                        }
                         setSelected(next);
                       }} style={{ width: 16, height: 16, accentColor: 'var(--gold)' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>

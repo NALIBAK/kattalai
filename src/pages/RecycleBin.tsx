@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../store';
 import { getDeletedDevotees, restoreDevotee, permanentlyDeleteDevotee, emptyRecycleBin } from '../db';
@@ -13,21 +13,25 @@ export function RecycleBin() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadRecords = async () => {
-    setLoading(true);
+  const loadRecords = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const data = await getDeletedDevotees();
       setRecords(data);
-    } catch (e) {
+    } catch {
       showToast('Failed to load recycle bin', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
-    loadRecords();
-  }, []);
+    Promise.resolve().then(() => {
+      loadRecords();
+    });
+  }, [loadRecords]);
 
   const handleRestore = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to restore devotee "${name}" along with all their family members and payment history?`)) {
@@ -35,8 +39,8 @@ export function RecycleBin() {
         await restoreDevotee(id);
         allowPush(); // Unlock auto-push since user made a genuine edit
         showToast(`"${name}" restored successfully!`, 'success');
-        loadRecords();
-      } catch (e) {
+        loadRecords(true);
+      } catch {
         showToast('Restoration failed', 'error');
       }
     }
@@ -48,8 +52,8 @@ export function RecycleBin() {
         await permanentlyDeleteDevotee(id);
         allowPush(); // Unlock auto-push since user made a genuine edit
         showToast(`"${name}" permanently deleted`, 'info');
-        loadRecords();
-      } catch (e) {
+        loadRecords(true);
+      } catch {
         showToast('Delete failed', 'error');
       }
     }
@@ -62,8 +66,8 @@ export function RecycleBin() {
         await emptyRecycleBin();
         allowPush(); // Unlock auto-push since user made a genuine edit
         showToast('Recycle Bin emptied completely!', 'success');
-        loadRecords();
-      } catch (e) {
+        loadRecords(true);
+      } catch {
         showToast('Failed to empty bin', 'error');
       }
     }

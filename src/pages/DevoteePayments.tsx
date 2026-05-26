@@ -19,11 +19,6 @@ export function DevoteePayments() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
   const loadData = async () => {
     if (id) {
       const d = await getDevotee(id);
@@ -37,6 +32,13 @@ export function DevoteePayments() {
       }
     }
   };
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      loadData();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleAddPayment = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {

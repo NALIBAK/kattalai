@@ -59,11 +59,12 @@ function App() {
         await setGDriveSetting('gDriveLastSync', time);
         setSyncPaused(false);
         console.log('✅ Background sync success (Pushed local edits)');
-      } catch (e: any) {
-        if (e.message === 'AUTH_REQUIRED') {
+      } catch (e) {
+        const err = e as { message?: string };
+        if (err.message === 'AUTH_REQUIRED') {
           setSyncPaused(true);
         } else {
-          console.error('❌ Background sync failed', e);
+          console.error('❌ Background sync failed', err);
         }
       }
     }, 5000); // 5 seconds debounce
@@ -96,13 +97,14 @@ function App() {
              setCloudUpdateAvailable(true);
            }
         }
-      } catch (e: any) {
-         if (e.message === 'AUTH_REQUIRED') {
-           // Silently pause polling until token is refreshed, preventing annoying red banners
-           console.warn('[Google Auth] Background poll paused: session token expired.');
-         } else {
-           console.error('Cloud polling error:', e);
-         }
+      } catch (e) {
+        const err = e as { message?: string };
+        if (err.message === 'AUTH_REQUIRED') {
+          // Silently pause polling until token is refreshed, preventing annoying red banners
+          console.warn('[Google Auth] Background poll paused: session token expired.');
+        } else {
+          console.error('Cloud polling error:', err);
+        }
       } finally {
         isChecking = false;
       }
@@ -120,7 +122,7 @@ function App() {
     const handleWindowClick = async () => {
       try {
         console.log('[Google Auth] Active interaction detected, performing quick OAuth flash-refresh...');
-        const token = await getGoogleAccessToken(false); // Quick interactive popup (auto-closes if already authorized)
+        await getGoogleAccessToken(false); // Quick interactive popup (auto-closes if already authorized)
         setSyncPaused(false);
         showToast('🔄 Google Drive Sync Reconnected!', 'success');
         
@@ -159,7 +161,7 @@ function App() {
         await setGDriveSetting('gDriveLastSync', existing.modifiedTime);
         showToast('✅ App synced with cloud!', 'success');
       }
-    } catch (e: any) {
+    } catch {
       showToast('Update failed', 'error');
     } finally {
       // Keep push blocked for 15 seconds to prevent race conditions
@@ -200,7 +202,7 @@ function App() {
       }
     };
     initApp();
-  }, [setCache, setLoading, loadSettings, loadCategories, showToast]);
+  }, [setCache, setLoading, loadSettings, loadCategories, loadDevotees, showToast]);
 
   useEffect(() => {
     // Periodic auto-refresh interval (every 4 hours)
@@ -261,10 +263,12 @@ function App() {
                 onClick={async () => {
                    setCloudUpdateAvailable(false);
                    showToast('Pushing local data to cloud...', 'info');
-                   try {
-                     const time = await syncToGoogleDrive(false);
-                     await setGDriveSetting('gDriveLastSync', time);
-                   } catch(e) {}
+                    try {
+                      const time = await syncToGoogleDrive(false);
+                      await setGDriveSetting('gDriveLastSync', time);
+                    } catch {
+                      // Suppress error if sync is blocked/deferred on user action
+                    }
                 }}
                 style={{ background: 'transparent', color: '#000', border: '1px solid #000', padding: '7px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
              >

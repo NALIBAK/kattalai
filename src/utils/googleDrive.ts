@@ -46,19 +46,40 @@ export async function getGoogleAccessToken(silent: boolean = false): Promise<str
     }
 
     // 3. Token missing or expired.
-    if (!(window as any).google) {
+    const globalWindow = window as unknown as {
+      google?: {
+        accounts: {
+          oauth2: {
+            initTokenClient: (config: {
+              client_id: string;
+              scope: string;
+              callback: (resp: {
+                error?: string;
+                error_description?: string;
+                access_token: string;
+                expires_in?: number;
+              }) => void;
+            }) => {
+              requestAccessToken: (options?: { prompt?: string; hint?: string }) => void;
+            };
+          };
+        };
+      };
+    };
+
+    if (!globalWindow.google) {
       return reject(new Error('Google Identity Services not loaded.'));
     }
 
     const userState = useAuthStore.getState();
     const email = userState?.user?.email || '';
 
-    const client = (window as any).google.accounts.oauth2.initTokenClient({
+    const client = globalWindow.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       // drive.appdata: cross-device hidden folder, user's own data only
       // drive.file: needed to find legacy backups from older app versions
       scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
-      callback: (response: any) => {
+      callback: (response) => {
         if (response.error || response.error_description) {
           console.warn('[Google Auth] Silent/Interactive token request failed:', response.error, response.error_description);
           reject(new Error('AUTH_REQUIRED'));
@@ -233,6 +254,6 @@ export async function syncToGoogleDrive(silent: boolean = true): Promise<string>
 }
 
 // ── Legacy compat — getFolderId no longer needed with appDataFolder ──────────
-export async function getFolderId(_token: string): Promise<string> {
+export async function getFolderId(): Promise<string> {
   return 'appDataFolder';
 }

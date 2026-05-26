@@ -140,7 +140,7 @@ export async function getDB() {
         db.createObjectStore('auth_cache', { keyPath: 'email' });
 
         // Seed 27 Nakshathirams
-        seedNakshathirams(catStore as any);
+        seedNakshathirams(catStore as unknown as { put: (val: unknown) => unknown });
       }
 
       // ── v1 → v2 migration ─────────────────────────────────────
@@ -170,7 +170,7 @@ export async function getDB() {
   return db;
 }
 
-function seedNakshathirams(store: any) {
+function seedNakshathirams(store: { put: (val: unknown) => unknown }) {
   const nakshathirams = [
     ['Ashwini','அஸ்வினி'],['Bharani','பரணி'],['Karthigai','கார்த்திகை'],
     ['Rohini','ரோகிணி'],['Mirugaseeridam','மிருகசீரிஷம்'],['Thiruvathirai','திருவாதிரை'],

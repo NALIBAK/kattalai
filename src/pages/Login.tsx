@@ -44,9 +44,10 @@ export function Login() {
       } else {
         navigate('/pending');
       }
-    } catch (error: any) {
-      if (error.message !== 'No credential') {
-        showToast(error.message || 'Login failed', 'error');
+    } catch (error) {
+      const err = error as { message?: string };
+      if (err.message !== 'No credential') {
+        showToast(err.message || 'Login failed', 'error');
       }
     } finally {
       setIsSigningIn(false);

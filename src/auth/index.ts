@@ -7,6 +7,34 @@ const SHEET_API_KEY = import.meta.env.VITE_SHEETS_API_KEY || '';
 const SHEET_ID = import.meta.env.VITE_GOOGLE_SHEET_ID || '';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+
+interface GooglePromptNotification {
+  isNotDisplayed: () => boolean;
+  isSkippedMoment: () => boolean;
+}
+
+interface GoogleAccountsId {
+  initialize: (config: { client_id: string; callback: (resp: GoogleCredentialResponse) => void }) => void;
+  prompt: (handler: (notification: GooglePromptNotification) => void) => void;
+  renderButton: (element: HTMLElement | null, options: { theme?: string; size?: string; width?: number; text?: string }) => void;
+  disableAutoSelect: () => void;
+}
+
+interface GoogleGsi {
+  accounts: {
+    id: GoogleAccountsId;
+  };
+}
+
+declare global {
+  interface Window {
+    google?: GoogleGsi;
+  }
+}
+
 // ── HMAC signing ──────────────────────────────────────────────────────────────
 function signCache(data: Omit<AuthCache, 'signature'>): string {
   const payload = `${data.email}|${data.plan}|${data.verified_on}|${data.valid_until}|${data.real_expiry}|${data.name}|${data.picture}`;
@@ -31,20 +59,20 @@ export function initGoogleAuth(): Promise<void> {
 
 export function signInWithGoogle(): Promise<{ email: string; name: string; picture: string }> {
   return new Promise((resolve, reject) => {
-    if (!(window as any).google) { reject(new Error('Google not loaded')); return; }
-    (window as any).google.accounts.id.initialize({
+    if (!window.google) { reject(new Error('Google not loaded')); return; }
+    window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: (response: any) => {
+      callback: (response: GoogleCredentialResponse) => {
         if (!response.credential) { reject(new Error('No credential')); return; }
         // Decode JWT payload
         const payload = JSON.parse(atob(response.credential.split('.')[1]));
         resolve({ email: payload.email, name: payload.name, picture: payload.picture });
       },
     });
-    (window as any).google.accounts.id.prompt((notification: any) => {
+    window.google.accounts.id.prompt((notification: GooglePromptNotification) => {
       if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
         // Show the button if one-tap fails
-        (window as any).google.accounts.id.renderButton(
+        window.google?.accounts.id.renderButton(
           document.getElementById('google-signin-btn'),
           { theme: 'filled_black', size: 'large', width: 280, text: 'signin_with' }
         );
@@ -138,8 +166,8 @@ export function isPlanAllowed(userPlan: string, required: 'free' | 'plus' | 'pro
 }
 
 export async function logout(): Promise<void> {
-  if ((window as any).google) {
-    (window as any).google.accounts.id.disableAutoSelect();
+  if (window.google) {
+    window.google.accounts.id.disableAutoSelect();
   }
   await clearAuthCache();
 }

@@ -3,6 +3,17 @@ import { PlanGate } from '../components/PlanGate';
 import { useCategoryStore, useDevoteeStore, useSettingsStore } from '../store';
 import { getDB, generateId } from '../db';
 
+interface BroadcastLog {
+  id: string;
+  category_id: string;
+  month: string;
+  year: string;
+  contact_count: number;
+  timestamp: string;
+  template_id: string;
+  has_image: boolean;
+}
+
 export function Broadcast() {
   const { categories } = useCategoryStore();
   const { devotees } = useDevoteeStore();
@@ -18,16 +29,20 @@ export function Broadcast() {
   const [queue, setQueue] = useState<typeof devotees>([]);
   const [sentCount, setSentCount] = useState(0);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
-  const [historyLog, setHistoryLog] = useState<any[]>([]);
+  const [historyLog, setHistoryLog] = useState<BroadcastLog[]>([]);
   const [historyCategory, setHistoryCategory] = useState('');
-
-  useEffect(() => { loadHistory(); }, []);
 
   const loadHistory = async () => {
     const db = await getDB();
     const logs = await db.getAll('broadcast_log');
     setHistoryLog(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
   };
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      loadHistory();
+    });
+  }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,7 +76,7 @@ export function Broadcast() {
     if (queue.length === 0) { finishBroadcast(); return; }
     const devotee = queue[0];
 
-    let msg = template
+    const msg = template
       .replace(/{name}/g, devotee.name)
       .replace(/{city}/g, devotee.city)
       .replace(/{nakshathiram}/g, categories.find(c => c.id === devotee.category)?.name || '')

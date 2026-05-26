@@ -38,7 +38,7 @@ export function Profile() {
       } else {
         showToast('Failed to refresh subscription. Please login again.', 'error');
       }
-    } catch (e) {
+    } catch {
       showToast('Connection error during refresh.', 'error');
     } finally {
       setIsRefreshing(false);
@@ -106,8 +106,9 @@ export function Profile() {
       const time = await syncToGoogleDrive(false);
       await setGDriveSetting('gDriveLastSync', time);
       showToast('✅ Push successful! Cloud now has your local data.', 'success');
-    } catch(e: any) {
-      showToast(e.message || 'Push failed', 'error');
+    } catch(e) {
+      const err = e as { message?: string };
+      showToast(err.message || 'Push failed', 'error');
     } finally {
       setIsPushing(false);
     }
@@ -170,8 +171,9 @@ export function Profile() {
         showToast('Migrating legacy backup to new format...', 'info');
         await syncToGoogleDrive();
       }
-    } catch(e: any) {
-      showToast(e.message || 'Pull failed', 'error');
+    } catch(e) {
+      const err = e as { message?: string };
+      showToast(err.message || 'Pull failed', 'error');
     } finally {
       setIsPulling(false);
       // Keep push blocked — user must make a real edit to re-enable it

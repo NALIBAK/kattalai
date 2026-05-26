@@ -29,7 +29,7 @@ export function SubscriptionExpired() {
       } else {
         showToast('Account not found. Contact admin.', 'error');
       }
-    } catch (e) {
+    } catch {
       showToast('Connection error. Please try again.', 'error');
     } finally {
       setIsRefreshing(false);

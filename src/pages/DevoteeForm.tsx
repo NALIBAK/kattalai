@@ -64,9 +64,22 @@ export function DevoteeForm() {
     location_lat: undefined,
     location_lng: undefined,
     location_accurate: false,
-    subscription_start: new Date().toISOString().split('T')[0],
-    subscription_end: new Date(Date.now() + 365*86400000).toISOString().split('T')[0],
+    subscription_start: '',
+    subscription_end: '',
   });
+
+  // Safe side-effect date initialization for new devotees
+  useEffect(() => {
+    if (!isEdit) {
+      Promise.resolve().then(() => {
+        setFormData(prev => ({
+          ...prev,
+          subscription_start: prev.subscription_start || new Date().toISOString().split('T')[0],
+          subscription_end: prev.subscription_end || new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+        }));
+      });
+    }
+  }, [isEdit]);
 
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -104,7 +117,7 @@ export function DevoteeForm() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleChange = (field: keyof Devotee, value: any) => {
+  const handleChange = <K extends keyof Devotee>(field: K, value: Partial<Devotee>[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
