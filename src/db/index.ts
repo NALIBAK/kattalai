@@ -85,6 +85,14 @@ export interface MessageTemplate {
   text: string;
 }
 
+export interface DeletedDevotee {
+  id: string;
+  devotee: Devotee;
+  family_members: FamilyMember[];
+  payment_history: PaymentEntry[];
+  deleted_at: string;
+}
+
 interface KattalaiDB extends DBSchema {
   devotees:       { key: string; value: Devotee;       indexes: { by_city: string; by_category: string; by_status: string } };
   family_members: { key: string; value: FamilyMember;  indexes: { by_devotee: string } };
@@ -94,13 +102,14 @@ interface KattalaiDB extends DBSchema {
   settings:       { key: string; value: AppSettings };
   auth_cache:     { key: string; value: AuthCache };
   message_templates: { key: string; value: MessageTemplate };
+  deleted_devotees:  { key: string; value: DeletedDevotee };
 }
 
 let db: IDBPDatabase<KattalaiDB>;
 
 export async function getDB() {
   if (db) return db;
-  db = await openDB<KattalaiDB>('KattalaiDB', 3, {
+  db = await openDB<KattalaiDB>('KattalaiDB', 4, {
     upgrade(db, oldVersion) {
       // ── Fresh install (oldVersion === 0) ───────────────────────
       if (oldVersion < 1) {
@@ -149,6 +158,13 @@ export async function getDB() {
           db.createObjectStore('message_templates', { keyPath: 'id' });
         }
       }
+
+      // ── v3 → v4 migration: Recycle Bin ───────────────────────
+      if (oldVersion < 4) {
+        if (!db.objectStoreNames.contains('deleted_devotees')) {
+          db.createObjectStore('deleted_devotees', { keyPath: 'id' });
+        }
+      }
     },
   });
   return db;
@@ -194,13 +210,61 @@ export async function upsertDevotee(d: Devotee): Promise<void> {
 
 export async function deleteDevotee(id: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['devotees','family_members','payment_history'], 'readwrite');
+  
+  // Fetch existing records first to bundle them
+  const devotee = await db.get('devotees', id);
+  if (!devotee) return;
+  
+  const fams = await db.getAllFromIndex('family_members', 'by_devotee', id);
+  const pays = await db.getAllFromIndex('payment_history', 'by_devotee', id);
+  
+  const deletedRecord: DeletedDevotee = {
+    id,
+    devotee,
+    family_members: fams,
+    payment_history: pays,
+    deleted_at: new Date().toISOString()
+  };
+  
+  const tx = db.transaction(['devotees', 'family_members', 'payment_history', 'deleted_devotees'], 'readwrite');
+  await tx.objectStore('deleted_devotees').put(deletedRecord);
   await tx.objectStore('devotees').delete(id);
-  const fams = await tx.objectStore('family_members').index('by_devotee').getAll(id);
   for (const f of fams) await tx.objectStore('family_members').delete(f.id);
-  const pays = await tx.objectStore('payment_history').index('by_devotee').getAll(id);
   for (const p of pays) await tx.objectStore('payment_history').delete(p.id);
   await tx.done;
+}
+
+export async function getDeletedDevotees(): Promise<DeletedDevotee[]> {
+  const db = await getDB();
+  const all = await db.getAll('deleted_devotees');
+  return all.sort((a, b) => b.deleted_at.localeCompare(a.deleted_at));
+}
+
+export async function restoreDevotee(id: string): Promise<void> {
+  const db = await getDB();
+  const record = await db.get('deleted_devotees', id);
+  if (!record) return;
+  
+  const tx = db.transaction(['devotees', 'family_members', 'payment_history', 'deleted_devotees'], 'readwrite');
+  await tx.objectStore('devotees').put(record.devotee);
+  for (const f of record.family_members) {
+    await tx.objectStore('family_members').put(f);
+  }
+  for (const p of record.payment_history) {
+    await tx.objectStore('payment_history').put(p);
+  }
+  await tx.objectStore('deleted_devotees').delete(id);
+  await tx.done;
+}
+
+export async function permanentlyDeleteDevotee(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('deleted_devotees', id);
+}
+
+export async function emptyRecycleBin(): Promise<void> {
+  const db = await getDB();
+  await db.clear('deleted_devotees');
 }
 
 export async function getFamilyMembers(devotee_id: string): Promise<FamilyMember[]> {

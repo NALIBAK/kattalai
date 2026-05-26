@@ -21,10 +21,11 @@ export async function restoreFromBackupBlob(blob: Blob): Promise<void> {
   // ── FULL REPLACEMENT: Clear existing data first ──
   // This prevents "ghost" records from piling up across devices.
   {
-    const clearTx = db.transaction(['devotees', 'family_members', 'payment_history', 'categories'], 'readwrite');
+    const clearTx = db.transaction(['devotees', 'family_members', 'payment_history', 'categories', 'deleted_devotees'], 'readwrite');
     await clearTx.objectStore('devotees').clear();
     await clearTx.objectStore('family_members').clear();
     await clearTx.objectStore('payment_history').clear();
+    await clearTx.objectStore('deleted_devotees').clear();
     // Only clear non-builtin categories (builtins are seeded on app init)
     const allCats = await clearTx.objectStore('categories').getAll();
     for (const cat of allCats) {
@@ -56,6 +57,15 @@ export async function restoreFromBackupBlob(blob: Blob): Promise<void> {
     const tx = db.transaction('payment_history', 'readwrite');
     for (const pay of data.payments) {
       tx.store.put(pay as PaymentEntry);
+    }
+    await tx.done;
+  }
+
+  // Restore Deleted Devotees (Recycle Bin)
+  if (data.deleted_devotees) {
+    const tx = db.transaction('deleted_devotees', 'readwrite');
+    for (const dd of data.deleted_devotees) {
+      tx.store.put(dd);
     }
     await tx.done;
   }

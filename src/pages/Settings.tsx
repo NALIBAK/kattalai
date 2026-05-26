@@ -280,12 +280,14 @@ export function Settings() {
     try {
       const db = await getDB();
       const allPayments: PaymentEntry[] = await db.getAll('payment_history') as PaymentEntry[];
+      const deletedDevotees = await db.getAll('deleted_devotees');
 
       const backupObj = {
         meta: { app: 'Kattalai_CMS', version: '1.0', date: new Date().toISOString() },
         devotees,
         categories: categories.filter(c => !c.is_builtin),
-        payments: allPayments
+        payments: allPayments,
+        deleted_devotees: deletedDevotees
       };
 
       const zip = new JSZip();
@@ -436,6 +438,15 @@ export function Settings() {
               <div className="text-sm text-2">Manage colors, and custom VIP badges.</div>
             </div>
             <button className="btn btn-ghost" onClick={() => navigate('/settings/categories')}>Manage</button>
+          </div>
+
+          {/* ── Recycle Bin ── */}
+          <div className="card mb-16 flex-between">
+            <div>
+              <h4 className="m-0 text-gold mb-4">Recycle Bin</h4>
+              <div className="text-sm text-2">Restore or permanently delete removed devotees.</div>
+            </div>
+            <button className="btn btn-ghost" onClick={() => navigate('/settings/recycle-bin')}>View</button>
           </div>
 
           {/* Backup & Restore */}

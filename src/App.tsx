@@ -14,6 +14,7 @@ import { Broadcast } from './pages/Broadcast';
 import { CoverPrint } from './pages/CoverPrint';
 import { Settings } from './pages/Settings';
 import { ManageCategories } from './pages/ManageCategories';
+import { RecycleBin } from './pages/RecycleBin';
 import { BulkImport } from './pages/BulkImport';
 import { MapHub } from './pages/MapHub';
 import { ContactDeveloper } from './pages/ContactDeveloper';
@@ -287,6 +288,7 @@ function App() {
             <Route path="/cover-print" element={<CoverPrint />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/categories" element={<ManageCategories />} />
+            <Route path="/settings/recycle-bin" element={<RecycleBin />} />
             <Route path="/bulk-import" element={<BulkImport />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/upgrade" element={<UpgradePlan />} />
