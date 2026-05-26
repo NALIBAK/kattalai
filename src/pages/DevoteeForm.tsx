@@ -66,6 +66,7 @@ export function DevoteeForm() {
     location_accurate: false,
     subscription_start: '',
     subscription_end: '',
+    gmap_link: '',
   });
 
   // Safe side-effect date initialization for new devotees
@@ -365,6 +366,43 @@ export function DevoteeForm() {
     );
   };
 
+  const handleParseGMapLink = () => {
+    const link = formData.gmap_link;
+    if (!link) {
+      showToast('Please enter a Google Maps link first', 'error');
+      return;
+    }
+
+    // Regex to match @lat,lng
+    const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    // Regex to match q=lat,lng or query=lat,lng
+    const qRegex = /[?&](q|query)=(-?\d+\.\d+),(-?\d+\.\d+)/;
+
+    let match = link.match(atRegex);
+    if (!match) {
+      match = link.match(qRegex);
+      if (match) {
+        const lat = parseFloat(match[2]);
+        const lng = parseFloat(match[3]);
+        setFormData(prev => ({ ...prev, location_lat: lat, location_lng: lng, location_accurate: true }));
+        showToast('Successfully extracted coordinates from link!', 'success');
+        return;
+      }
+    } else {
+      const lat = parseFloat(match[1]);
+      const lng = parseFloat(match[2]);
+      setFormData(prev => ({ ...prev, location_lat: lat, location_lng: lng, location_accurate: true }));
+      showToast('Successfully extracted coordinates from link!', 'success');
+      return;
+    }
+
+    if (link.includes('maps.app.goo.gl') || link.includes('goo.gl/maps')) {
+      showToast('Shortened link detected. Please open it in your browser and copy the long URL containing coordinates to auto-extract.', 'info');
+    } else {
+      showToast('Could not auto-extract coordinates. Link is saved as text.', 'warning');
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name || !formData.category) {
       showToast('Name and Category are required', 'error');
@@ -573,6 +611,32 @@ export function DevoteeForm() {
             )}
           </div>
           <textarea className="form-input" value={formData.address} onChange={e => handleChange('address', e.target.value)} placeholder="e.g. 12 Car Street..." rows={2} />
+        </div>
+
+        <div className="form-group">
+          <div className="flex-between mb-4">
+            <label className="form-label mb-0">Google Maps Shared Link (Optional)</label>
+            {formData.gmap_link && (
+              <button 
+                type="button" 
+                className="btn btn-xs btn-ghost" 
+                style={{ color: 'var(--gold)', borderColor: 'var(--gold)' }}
+                onClick={handleParseGMapLink}
+              >
+                🌐 Auto-Extract GPS
+              </button>
+            )}
+          </div>
+          <input 
+            type="text" 
+            className="form-input" 
+            value={formData.gmap_link || ''} 
+            onChange={e => handleChange('gmap_link', e.target.value)} 
+            placeholder="Paste shared link e.g. https://maps.app.goo.gl/..."
+          />
+          <div className="text-xs text-muted mt-4">
+            💡 Paste a long Google Maps link to auto-extract GPS coordinates.
+          </div>
         </div>
 
         <PlanGate requiredPlan="pro" featureName="GPS Location Tagging">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
+import { useAuthStore, useToastStore, useDevoteeStore, useSettingsStore } from '../store';
 import { verifyAccess } from '../auth';
 import { getGoogleAccessToken, fetchLatestBackup, fetchLegacyBackup, downloadBackup, syncToGoogleDrive } from '../utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from '../utils/backup';
@@ -12,8 +12,7 @@ export function Profile() {
   const { user, plan, setCache, logout } = useAuthStore();
   const { showToast } = useToastStore();
   const { refresh: refreshDevotees } = useDevoteeStore();
-  const { loadCategories } = useCategoryStore();
-  const { setGDriveSetting } = useSettingsStore();
+  const { templeName, setTempleName, templeAddress, setTempleAddress, setGDriveSetting } = useSettingsStore();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
@@ -200,6 +199,72 @@ export function Profile() {
         />
         <h2 className="mb-4">{user.name}</h2>
         <p className="text-muted text-sm">{user.email}</p>
+      </div>
+      {/* 📈 Temple Finance Ledger Card */}
+      <div 
+        className="card mb-24 cursor-pointer hover-scale" 
+        onClick={() => navigate('/profile/finance')}
+        style={{
+          border: '1px solid var(--gold)',
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(0,0,0,0.2))',
+          padding: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div className="flex gap-16" style={{ alignItems: 'center' }}>
+          <span style={{ fontSize: '2rem' }}>📈</span>
+          <div className="text-left">
+            <h4 className="m-0" style={{ color: 'var(--gold)' }}>View Temple Finance Ledger</h4>
+            <p className="text-xs text-muted m-0 mt-4">Subscription analytics, total collections, and pending dues</p>
+          </div>
+        </div>
+        <span style={{ color: 'var(--gold)', fontSize: '1.2rem', fontWeight: 'bold' }}>→</span>
+      </div>
+
+      {/* Return Address Card */}
+      <div className="card mb-24">
+        <h4 className="mb-16 text-2">Return Address Settings (FROM)</h4>
+        <p className="text-xs text-muted mb-16">
+          Provide your temple/organization's address to print it as the sender (FROM) address on Speed Post envelopes and labels.
+        </p>
+        <div className="mb-16">
+          <label className="text-xs text-muted block mb-4">Temple/Organization Name</label>
+          <input 
+            type="text" 
+            className="input w-full"
+            style={{ 
+              background: 'var(--surface-2)', 
+              border: '1px solid var(--border)', 
+              color: 'var(--text-1)',
+              padding: '10px',
+              borderRadius: '6px',
+            }}
+            value={templeName}
+            onChange={(e) => setTempleName(e.target.value)}
+            placeholder="e.g. Sri Chidambaram Natarajar Temple"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted block mb-4">Sender Return Address Details</label>
+          <textarea 
+            className="input w-full"
+            style={{ 
+              background: 'var(--surface-2)', 
+              border: '1px solid var(--border)', 
+              color: 'var(--text-1)',
+              padding: '10px',
+              borderRadius: '6px',
+              minHeight: '80px',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+            }}
+            value={templeAddress}
+            onChange={(e) => setTempleAddress(e.target.value)}
+            placeholder="e.g. East Car Street, Chidambaram, Tamil Nadu - 608001"
+          />
+        </div>
       </div>
 
       <div className="card mb-24">

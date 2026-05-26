@@ -1,154 +1,120 @@
-import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDevoteeStore, useAuthStore } from '../store';
-import { PlanGate } from '../components/PlanGate';
-import { getSubscriptionStatus } from '../db';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { devotees, load, loading } = useDevoteeStore();
-  const { plan } = useAuthStore();
-  const [showFinance, setShowFinance] = useState(false);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const stats = useMemo(() => {
-    let active = 0, expiring = 0, expired = 0, collected = 0, pending = 0;
-    devotees.forEach(d => {
-      const status = getSubscriptionStatus(d);
-      if (status === 'active') active++;
-      else if (status === 'expiring') expiring++;
-      else expired++;
-
-      collected += d.amount_paid;
-      pending += Math.max(0, d.annual_amount - d.amount_paid);
-    });
-    return { total: devotees.length, active, expiring, expired, collected, pending };
-  }, [devotees]);
-
-  if (loading) {
-    return (
-      <div className="p-16 flex-col gap-16">
-        <div className="skeleton" style={{ height: 100 }} />
-        <div className="grid-2"><div className="skeleton" style={{ height: 90 }} /><div className="skeleton" style={{ height: 90 }} /></div>
-      </div>
-    );
-  }
+  const chapters = [
+    {
+      num: 'Chapter 1',
+      title: '👥 Devotee Records',
+      desc: 'View, search, and manage devotees and their family members.',
+      path: '/devotees',
+      badge: 'Registry'
+    },
+    {
+      num: 'Chapter 2',
+      title: '🛣️ Vasool Tour Planner',
+      desc: 'Plan optimized collection rounds and track pending dues on the go.',
+      path: '/vasool',
+      badge: 'Vasool'
+    },
+    {
+      num: 'Chapter 3',
+      title: '🗺️ Temple Map Hub',
+      desc: 'Explore devotee locations visually on the map and export coordinates.',
+      path: '/map',
+      badge: 'Map Hub'
+    },
+    {
+      num: 'Chapter 4',
+      title: '📢 Broadcast Alerts',
+      desc: 'Send WhatsApp notifications, festival greetings, and due reminders.',
+      path: '/broadcast',
+      badge: 'Broadcast'
+    },
+    {
+      num: 'Chapter 5',
+      title: '✉️ Envelope Printing',
+      desc: 'Print C6 custom envelopes and A4 sheet address labels with Speed Post barcodes.',
+      path: '/cover-print',
+      badge: 'Printing'
+    },
+    {
+      num: 'Chapter 6',
+      title: '⚙️ System Settings',
+      desc: 'Configure temple options, manage categories, recycle bin, or run database syncs.',
+      path: '/settings',
+      badge: 'Settings'
+    }
+  ];
 
   return (
-    <div>
-      <div className="section">
-        <h3 className="mb-16">Temple Dashboard</h3>
+    <div className="section pt-16 pb-32">
+      {/* Golden Temple Header Banner */}
+      <div 
+        className="card mb-24 text-center" 
+        style={{
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0.4) 100%)',
+          border: '2px solid var(--gold)',
+          borderRadius: '12px',
+          padding: '24px 16px',
+          boxShadow: '0 4px 20px rgba(212,175,55,0.08)'
+        }}
+      >
+        <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '8px' }}>🛕</span>
+        <h2 className="m-0 fw-700" style={{ color: 'var(--gold)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+          Sri Kattalai Registry
+        </h2>
+        <p className="text-xs text-muted m-0 mt-8" style={{ fontStyle: 'italic', letterSpacing: '0.5px' }}>
+          "Spiritual Devotee Management & Ledger"
+        </p>
+      </div>
 
-        {/* Financial Summary */}
-        <div className="card mb-16" style={{ background: 'linear-gradient(135deg, var(--surface-2), var(--surface))' }}>
-          <div className="flex-between mb-8">
-            <span className="text-2 text-sm fw-600">FINANCIAL SUMMARY (THIS YEAR)</span>
-            <button className="btn-icon" style={{ width: 32, height: 32, fontSize: '1rem' }} onClick={() => setShowFinance(!showFinance)}>
-              {showFinance ? '👁️' : '🕶️'}
-            </button>
-          </div>
-          <div className="grid-2 mt-16">
-            <div>
-              <div className="text-muted text-xs mb-4">Total Collected</div>
-              <div className="text-xl fw-700 text-green">
-                {showFinance ? `₹${stats.collected.toLocaleString('en-IN')}` : '₹****'}
-              </div>
-            </div>
-            <div>
-              <div className="text-muted text-xs mb-4">Pending Dues</div>
-              <div className="text-xl fw-700 text-red">
-                {showFinance ? `₹${stats.pending.toLocaleString('en-IN')}` : '₹****'}
-              </div>
-            </div>
-          </div>
-        </div>
+      <h4 className="mb-16 text-2 fw-600" style={{ letterSpacing: '0.5px' }}>📖 Table of Chapters</h4>
 
-        {/* Subscription Stats */}
-        <h4 className="mb-8 mt-16 text-2">Subscriptions</h4>
-        <div className="grid-2 mb-16">
-          <div className="stat-card" onClick={() => { useDevoteeStore.getState().setFilterStatus(''); navigate('/devotees'); }}>
-            <div className="stat-label">Total Devotees</div>
-            <div className="flex-between w-full">
-              <div className="stat-value">{stats.total}</div>
-              <div className="stat-icon">👥</div>
-            </div>
-          </div>
-          <div className="stat-card" onClick={() => { useDevoteeStore.getState().setFilterStatus('active'); navigate('/devotees'); }}>
-            <div className="stat-label text-green">Active</div>
-            <div className="flex-between w-full">
-              <div className="stat-value">{stats.active}</div>
-              <div className="stat-icon">✅</div>
-            </div>
-          </div>
-          <div className="stat-card" style={{ borderColor: 'rgba(240,165,0,0.3)', background: 'rgba(240,165,0,0.05)' }} onClick={() => { useDevoteeStore.getState().setFilterStatus('expiring'); navigate('/devotees'); }}>
-            <div className="stat-label text-amber">Expiring (30d)</div>
-            <div className="flex-between w-full">
-              <div className="stat-value text-amber">{stats.expiring}</div>
-              <div className="stat-icon">⚠️</div>
-            </div>
-          </div>
-          <div className="stat-card" style={{ borderColor: 'rgba(246,70,93,0.3)', background: 'rgba(246,70,93,0.05)' }} onClick={() => { useDevoteeStore.getState().setFilterStatus('expired'); navigate('/devotees'); }}>
-            <div className="stat-label text-red">Expired</div>
-            <div className="flex-between w-full">
-              <div className="stat-value text-red">{stats.expired}</div>
-              <div className="stat-icon">❌</div>
-            </div>
-          </div>
-        </div>
+      {/* Chapters Grid */}
+      <div className="flex flex-col gap-16">
+        {chapters.map((ch, idx) => (
+          <div 
+            key={idx}
+            className="card cursor-pointer hover-scale flex-col justify-center"
+            onClick={() => navigate(ch.path)}
+            style={{
+              padding: '20px',
+              border: '1px solid var(--border)',
+              background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Elegant side border highlight */}
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: '4px',
+              backgroundColor: 'var(--gold)'
+            }} />
 
-        {/* Quick Actions */}
-        <h4 className="mb-8 mt-16 text-2">Quick Actions</h4>
-        <div className="grid-2">
-          <button className="btn btn-primary" onClick={() => navigate('/devotees/new')}>
-            ➕ Add Devotee
-          </button>
-          <PlanGate requiredPlan="pro" featureName="Map Hub Access">
-            <button className="btn btn-ghost" onClick={() => navigate('/map')} style={{ color: 'var(--gold)', borderColor: 'var(--gold)', width: '100%' }}>
-              🗺️ Open Map Hub
-            </button>
-          </PlanGate>
-        </div>
-
-        {/* WhatsApp Broadcast Status (Plus+) */}
-        {plan !== 'free' && (
-          <div className="card mt-16" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: '2rem' }}>📢</div>
-            <div>
-              <div className="fw-600">WhatsApp Broadcast</div>
-              <div className="text-sm text-2">Send festival greetings and reminders.</div>
-              <button className="btn btn-sm mt-8" style={{ background: '#25D366', color: '#fff' }} onClick={() => navigate('/broadcast')}>
-                Open Broadcast
-              </button>
+            <div className="flex-between w-full mb-8">
+              <span className="text-xs fw-700" style={{ color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                {ch.num}
+              </span>
+              <span className="badge text-xs" style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--gold)', border: '1px solid rgba(212,175,55,0.2)' }}>
+                {ch.badge}
+              </span>
             </div>
-          </div>
-        )}
 
-        {/* Upgrade Promo for Free Users */}
-        {plan === 'free' && (
-          <div className="card mt-16" style={{ 
-            border: '1px solid var(--gold)', 
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.05), rgba(30,144,255,0.05))',
-            cursor: 'pointer'
-          }} onClick={() => navigate('/upgrade')}>
-            <div className="flex gap-12" style={{ alignItems: 'center' }}>
-              <div style={{ fontSize: '2.2rem' }}>🚀</div>
-              <div style={{ flex: 1 }}>
-                <div className="fw-700" style={{ color: 'var(--gold)', fontSize: '1rem' }}>Unlock Full Features</div>
-                <div className="text-xs text-muted mt-4" style={{ lineHeight: 1.4 }}>
-                  Get WhatsApp Broadcasting, Map Hub, GPS Tracking, OCR Scanning & more with Plus or Pro.
-                </div>
-                <div className="flex gap-8 mt-8">
-                  <span style={{ background: 'rgba(30,144,255,0.15)', color: '#1e90ff', padding: '2px 8px', borderRadius: 8, fontSize: '0.65rem', fontWeight: 700 }}>⭐ PLUS</span>
-                  <span style={{ background: 'rgba(212,175,55,0.15)', color: 'var(--gold)', padding: '2px 8px', borderRadius: 8, fontSize: '0.65rem', fontWeight: 700 }}>🔥 PRO</span>
-                </div>
-              </div>
-              <div style={{ color: 'var(--text-2)', fontSize: '1.2rem' }}>→</div>
-            </div>
+            <h3 className="m-0 fw-600 mb-8" style={{ color: 'var(--text-1)' }}>
+              {ch.title}
+            </h3>
+            
+            <p className="m-0 text-sm text-muted" style={{ lineHeight: '1.4' }}>
+              {ch.desc}
+            </p>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

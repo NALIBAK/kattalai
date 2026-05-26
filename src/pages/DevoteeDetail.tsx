@@ -369,6 +369,35 @@ export function DevoteeDetail() {
         </div>
       </PlanGate>
 
+      {devotee.gmap_link && (
+        <div className="card mb-32 p-0" style={{ overflow: 'hidden' }}>
+          <div className="p-16">
+            <h4 className="text-gold mb-4">Google Maps Shared View 🌐</h4>
+            <div className="text-xs text-muted mb-12">Interactive live map view loaded directly from your saved shared link.</div>
+          </div>
+          <div style={{ height: 300, width: '100%', border: 'none', background: 'var(--surface-2)' }}>
+            <iframe
+              title="Google Map Shared View"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(devotee.gmap_link)}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+          <div className="p-16" style={{ background: 'var(--surface-2)' }}>
+            <button 
+              className="btn btn-ghost btn-sm w-full"
+              style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+              onClick={() => window.open(devotee.gmap_link, '_blank')}
+            >
+              🌐 Open Original Link
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

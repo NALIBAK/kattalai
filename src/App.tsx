@@ -28,6 +28,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/AppLayout';
 import { ToastContainer } from './components/ToastContainer';
 import { Profile } from './pages/Profile';
+import { FinanceStats } from './pages/FinanceStats';
 import { UpgradePlan } from './pages/UpgradePlan';
 import { SubscriptionExpired } from './pages/SubscriptionExpired';
 import { verifyAccess } from './auth';
@@ -305,6 +306,7 @@ function App() {
             <Route path="/settings/recycle-bin" element={<RecycleBin />} />
             <Route path="/bulk-import" element={<BulkImport />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/finance" element={<FinanceStats />} />
             <Route path="/upgrade" element={<UpgradePlan />} />
           </Route>
         </Route>

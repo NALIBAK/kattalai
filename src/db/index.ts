@@ -22,6 +22,7 @@ export interface Devotee {
   amount_paid: number;
   prasadham_count: number;
   prasadham_override: boolean;
+  gmap_link?: string; // Google Maps shared link
   created_at: string;
   updated_at: string;
 }

@@ -98,6 +98,7 @@ export const useCategoryStore = create<CategoryState>((set) => ({
 // ── Settings Store ─────────────────────────────────────────────
 interface SettingsState {
   templeName: string;
+  templeAddress: string;
   defaultAmount: number;
   prasadhamRule: 'per_member' | 'per_address';
   theme: 'light' | 'dark';
@@ -113,6 +114,7 @@ interface SettingsState {
   setDefaultAmount: (a: number) => void;
   updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
   setTempleName: (n: string) => Promise<void>;
+  setTempleAddress: (a: string) => Promise<void>;
   setGDriveSetting: (key: 'gDriveLinked' | 'gDriveAutoSync' | 'gDriveLastSync', value: boolean | string | null) => Promise<void>;
   
   // Template Actions
@@ -123,6 +125,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   templeName: 'Chidambaram Natarajar Temple',
+  templeAddress: '',
   defaultAmount: 1200,
   prasadhamRule: 'per_member',
   theme: 'dark',
@@ -135,6 +138,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   gDriveLastSync: null,
   loadSettings: async () => {
     const templeName = await getSetting('temple_name', 'Sri Kattalai Temple');
+    const templeAddress = await getSetting('temple_address', '');
     const defaultAmount = await getSetting('default_amount', 200);
     const prasadhamRule = await getSetting('prasadham_rule', 'per_member');
     let theme = await getSetting('theme', 'dark') as SettingsState['theme'];
@@ -161,7 +165,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
     
     set({ 
-      templeName, defaultAmount, prasadhamRule, theme, language, 
+      templeName, templeAddress, defaultAmount, prasadhamRule, theme, language, 
       notifyDaysBefore, broadcastResetDay,
       messageTemplates: templates,
       gDriveLinked, gDriveAutoSync, gDriveLastSync
@@ -179,6 +183,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTempleName: async (n) => {
     set({ templeName: n });
     await setSetting('temple_name', n);
+  },
+  setTempleAddress: async (a) => {
+    set({ templeAddress: a });
+    await setSetting('temple_address', a);
   },
   setGDriveSetting: async (key, value) => {
     set({ [key]: value } as unknown as Partial<SettingsState>);

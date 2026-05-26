@@ -5,13 +5,9 @@ export function Navigation() {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', icon: '📊', label: 'Home' },
+    { path: '/', icon: '📖', label: 'Book' },
     { path: '/devotees', icon: '👥', label: 'Devotees' },
-    { path: '/broadcast', icon: '📢', label: 'Broadcast' },
-    { path: '/cover-print', icon: '✉️', label: 'Covers' },
-    { path: '/map', icon: '🗺️', label: 'Map' },
-    { path: '/vasool', icon: '🛣️', label: 'Vasool' },
-    { path: '/settings', icon: '⚙️', label: 'Settings' }
+    { path: '/profile', icon: '👤', label: 'Profile' }
   ];
 
   return (
@@ -26,10 +22,10 @@ export function Navigation() {
           >
             <div className="nav-icon">{item.icon}</div>
             <span>{item.label}</span>
-            {/* Optional badge placeholder: {item.path === '/devotees' && <div className="nav-badge">3</div>} */}
           </div>
         );
       })}
     </div>
   );
 }
+
