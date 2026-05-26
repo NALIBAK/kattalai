@@ -52,27 +52,7 @@ export function Dashboard() {
 
   return (
     <div className="section pt-16 pb-32">
-      {/* Golden Temple Header Banner */}
-      <div 
-        className="card mb-24 text-center" 
-        style={{
-          background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0.4) 100%)',
-          border: '2px solid var(--gold)',
-          borderRadius: '12px',
-          padding: '24px 16px',
-          boxShadow: '0 4px 20px rgba(212,175,55,0.08)'
-        }}
-      >
-        <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '8px' }}>🛕</span>
-        <h2 className="m-0 fw-700" style={{ color: 'var(--gold)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-          {t('book_title')}
-        </h2>
-        <p className="text-xs text-muted m-0 mt-8" style={{ fontStyle: 'italic', letterSpacing: '0.5px' }}>
-          {t('book_subtitle')}
-        </p>
-      </div>
-
-      <h4 className="mb-16 text-2 fw-600" style={{ letterSpacing: '0.5px' }}>{t('book_chapters')}</h4>
+      <h2 className="mb-24 text-gold fw-600" style={{ letterSpacing: '0.5px' }}>{t('book_chapters')}</h2>
 
       {/* Chapters Grid */}
       <div className="flex flex-col gap-16">
