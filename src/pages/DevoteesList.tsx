@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getSubscriptionStatus, getPaymentStatus, deleteDevotee } from '../db';
+import type { Devotee } from '../db';
 import { allowPush } from '../utils/syncLock';
 import { useTranslation } from '../utils/i18n';
 
@@ -17,6 +18,14 @@ export function DevoteesList() {
   
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set(['ALL']));
+
+  const toggleCategory = (catId: string) => {
+    const next = new Set(expandedCategoryIds);
+    if (next.has(catId)) next.delete(catId);
+    else next.add(catId);
+    setExpandedCategoryIds(next);
+  };
 
   useEffect(() => {
     load();
@@ -129,6 +138,110 @@ export function DevoteesList() {
     load();
   };
 
+  const isSearchActive = !!searchQuery;
+  const isCategoryExpanded = (catId: string) => {
+    if (isSearchActive) return true; // Auto-expand all during search
+    return expandedCategoryIds.has(catId);
+  };
+
+  const renderCategoryFolder = (title: string, count: number, id: string, devoteesList: Devotee[]) => {
+    const expanded = isCategoryExpanded(id);
+    const isTa = t('save') === 'சேமி';
+    
+    return (
+      <div key={id} className="mb-16">
+        {/* Category Header Card */}
+        <div 
+          onClick={() => toggleCategory(id)}
+          className="card cursor-pointer flex-between"
+          style={{
+            padding: '16px 20px',
+            background: expanded ? 'rgba(212,175,55,0.06)' : 'var(--surface-2)',
+            border: `1.5px solid ${expanded ? 'var(--gold)' : 'var(--border)'}`,
+            borderRadius: '12px',
+            marginBottom: expanded && devoteesList.length > 0 ? '12px' : '0',
+            transition: 'all 0.2s',
+          }}
+        >
+          <div className="flex-center gap-12">
+            <span style={{ fontSize: '1.4rem' }}>📁</span>
+            <div className="fw-700" style={{ fontSize: '1.05rem', color: expanded ? 'var(--gold)' : 'var(--text-1)' }}>
+              {title}
+            </div>
+            <span className="text-xs text-muted">
+              ({count})
+            </span>
+          </div>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>
+            {expanded ? '▼' : '▶'}
+          </span>
+        </div>
+
+        {/* Devotees List inside Folder */}
+        {expanded && (
+          <div className="flex-col gap-12 pl-12" style={{ borderLeft: '2.5px dashed rgba(212,175,55,0.2)', marginLeft: '12px', paddingLeft: '16px' }}>
+            {devoteesList.length === 0 ? (
+              <div className="text-xs text-muted py-8" style={{ fontStyle: 'italic' }}>
+                {isTa ? 'இப்பிரிவில் பக்தர்கள் யாரும் இல்லை' : 'No devotees in this category'}
+              </div>
+            ) : (
+              devoteesList.map(devotee => {
+                const subStatus = getSubscriptionStatus(devotee);
+                const payStatus = getPaymentStatus(devotee);
+                const isPending = devotee.annual_amount > devotee.amount_paid;
+                
+                return (
+                  <div key={devotee.id} className="devotee-card" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingRight: isSelectMode ? 12 : 0 }} onClick={() => {
+                      if (isSelectMode) {
+                        toggleSelection(devotee.id);
+                      } else {
+                        navigate(`/devotees/${devotee.id}`);
+                      }
+                    }}>
+                    {isSelectMode && (
+                      <div style={{ paddingLeft: 8 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.has(devotee.id)} 
+                          readOnly
+                          style={{ width: 20, height: 20, cursor: 'pointer', accentColor: 'var(--gold)' }} 
+                        />
+                      </div>
+                    )}
+                    <div className="devotee-avatar" style={{ margin: 0 }}>
+                      {devotee.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="devotee-info" style={{ flex: 1 }}>
+                      <div className="flex-between">
+                        <div className="devotee-name">{devotee.name}</div>
+                        {isPending && <div className="text-red text-xs fw-700">₹{devotee.annual_amount - devotee.amount_paid} {t('due')}</div>}
+                      </div>
+                      <div className="devotee-meta mb-4">
+                        <span>📱 {devotee.phone}</span>
+                        <span>📍 {devotee.city}</span>
+                      </div>
+                      <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
+                        {subStatus === 'active' && <span className="badge badge-green">{t('active')}</span>}
+                        {subStatus === 'expiring' && <span className="badge badge-amber">{t('expiring')}</span>}
+                        {subStatus === 'expired' && <span className="badge badge-red">{t('expired')}</span>}
+                        
+                        {payStatus === 'paid' && <span className="badge badge-green">{t('paid')}</span>}
+                        {payStatus === 'partial' && <span className="badge badge-amber">{t('partial')}</span>}
+                        {payStatus === 'unpaid' && <span className="badge badge-red">{t('unpaid')}</span>}
+                        
+                        {getCatBadge(devotee.category)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       {/* Header */}
@@ -194,57 +307,27 @@ export function DevoteesList() {
           <p>{t('save') === 'சேமி' ? 'தேடல் அல்லது வடிகட்டிகளை மாற்றிப் பார்க்கவும்.' : 'Try adjusting your search or filters.'}</p>
         </div>
       ) : (
-        <div className="flex-col gap-12">
-          {filtered.map(devotee => {
-            const subStatus = getSubscriptionStatus(devotee);
-            const payStatus = getPaymentStatus(devotee);
-            const isPending = devotee.annual_amount > devotee.amount_paid;
+        <div className="flex-col gap-16">
+          {/* 1. All Devotees Folder */}
+          {renderCategoryFolder(t('all_devotees'), filtered.length, 'ALL', filtered)}
+
+          {/* 2. Grouped Category Folders */}
+          {categories.map(cat => {
+            const catDevotees = filtered.filter(d => d.category === cat.id);
+            if (catDevotees.length === 0) return null;
             
-            return (
-              <div key={devotee.id} className="devotee-card" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingRight: isSelectMode ? 12 : 0 }} onClick={() => {
-                  if (isSelectMode) {
-                    toggleSelection(devotee.id);
-                  } else {
-                    navigate(`/devotees/${devotee.id}`);
-                  }
-                }}>
-                {isSelectMode && (
-                  <div style={{ paddingLeft: 8 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={selectedIds.has(devotee.id)} 
-                      readOnly
-                      style={{ width: 20, height: 20, cursor: 'pointer', accentColor: 'var(--gold)' }} 
-                    />
-                  </div>
-                )}
-                <div className="devotee-avatar" style={{ margin: 0 }}>
-                  {devotee.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="devotee-info" style={{ flex: 1 }}>
-                  <div className="flex-between">
-                    <div className="devotee-name">{devotee.name}</div>
-                    {isPending && <div className="text-red text-xs fw-700">₹{devotee.annual_amount - devotee.amount_paid} {t('due')}</div>}
-                  </div>
-                  <div className="devotee-meta mb-4">
-                    <span>📱 {devotee.phone}</span>
-                    <span>📍 {devotee.city}</span>
-                  </div>
-                  <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
-                    {subStatus === 'active' && <span className="badge badge-green">{t('active')}</span>}
-                    {subStatus === 'expiring' && <span className="badge badge-amber">{t('expiring')}</span>}
-                    {subStatus === 'expired' && <span className="badge badge-red">{t('expired')}</span>}
-                    
-                    {payStatus === 'paid' && <span className="badge badge-green">{t('paid')}</span>}
-                    {payStatus === 'partial' && <span className="badge badge-amber">{t('partial')}</span>}
-                    {payStatus === 'unpaid' && <span className="badge badge-red">{t('unpaid')}</span>}
-                    
-                    {getCatBadge(devotee.category)}
-                  </div>
-                </div>
-              </div>
-            );
+            const catName = (t('save') === 'சேமி' && cat.name_ta) ? cat.name_ta : cat.name;
+            return renderCategoryFolder(catName, catDevotees.length, cat.id, catDevotees);
           })}
+
+          {/* 3. Uncategorized Folder */}
+          {(() => {
+            const uncategorizedDevs = filtered.filter(d => !d.category);
+            if (uncategorizedDevs.length === 0) return null;
+            
+            const uncategorizedTitle = t('save') === 'சேமி' ? 'இதர பக்தர்கள் (Uncategorized)' : 'Uncategorized';
+            return renderCategoryFolder(uncategorizedTitle, uncategorizedDevs.length, 'UNCATEGORIZED', uncategorizedDevs);
+          })()}
         </div>
       )}
 
