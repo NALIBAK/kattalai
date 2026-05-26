@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, useToastStore, useDevoteeStore, useSettingsStore } from '../store';
+import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
 import { verifyAccess } from '../auth';
 import { getGoogleAccessToken, fetchLatestBackup, fetchLegacyBackup, downloadBackup, syncToGoogleDrive } from '../utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from '../utils/backup';
@@ -12,6 +12,7 @@ export function Profile() {
   const { user, plan, setCache, logout } = useAuthStore();
   const { showToast } = useToastStore();
   const { refresh: refreshDevotees } = useDevoteeStore();
+  const { loadCategories } = useCategoryStore();
   const { templeName, setTempleName, templeAddress, setTempleAddress, setGDriveSetting } = useSettingsStore();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -82,7 +83,7 @@ export function Profile() {
         showToast('Fetching cloud version for comparison...', 'info');
         const blob = await downloadBackup(token, existing.id);
         const cloudPreview = await previewBackupBlob(blob);
-        cloudDevotees = cloudPreview.rawData.devotees || [];
+        cloudDevotees = (cloudPreview.rawData as any).devotees || [];
       }
       
       const localDevotees = useDevoteeStore.getState().devotees;
@@ -137,7 +138,7 @@ export function Profile() {
       showToast('Fetching cloud version for comparison...', 'info');
       const blob = await downloadBackup(token, existingFileId);
       const cloudPreview = await previewBackupBlob(blob);
-      const cloudDevotees: Devotee[] = cloudPreview.rawData.devotees || [];
+      const cloudDevotees: Devotee[] = (cloudPreview.rawData as any).devotees || [];
       const localDevotees = useDevoteeStore.getState().devotees;
       
       const { added, removed, changed } = compareDevotees(cloudDevotees, localDevotees);

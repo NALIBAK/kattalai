@@ -399,7 +399,7 @@ export function DevoteeForm() {
     if (link.includes('maps.app.goo.gl') || link.includes('goo.gl/maps')) {
       showToast('Shortened link detected. Please open it in your browser and copy the long URL containing coordinates to auto-extract.', 'info');
     } else {
-      showToast('Could not auto-extract coordinates. Link is saved as text.', 'warning');
+      showToast('Could not auto-extract coordinates. Link is saved as text.', 'info');
     }
   };
 

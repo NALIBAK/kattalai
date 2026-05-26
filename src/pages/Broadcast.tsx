@@ -10,8 +10,8 @@ interface BroadcastLog {
   year: string;
   contact_count: number;
   timestamp: string;
-  template_id: string;
-  has_image: boolean;
+  template_id?: string;
+  has_image?: boolean;
 }
 
 export function Broadcast() {
