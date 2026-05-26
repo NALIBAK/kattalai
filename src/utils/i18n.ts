@@ -146,7 +146,6 @@ export const translations = {
     copied_clipboard: 'நகலெடுக்கப்பட்டது!',
 
     // Settings Additional & Message Templates
-    settings_templates: '🛠️ செய்தி வார்ப்புருக்கள்',
     settings_add_template: '➕ புதிய வார்ப்புரு சேர்',
     settings_new_template: '🆕 புதிய வார்ப்புரு',
     settings_edit_template: '✏️ வார்ப்புரு திருத்து',
@@ -371,7 +370,6 @@ export const translations = {
     copied_clipboard: 'Copied to clipboard!',
 
     // Settings Additional & Message Templates
-    settings_templates: '🛠️ Message Templates',
     settings_add_template: '+ Add New',
     settings_new_template: '🆕 New Template',
     settings_edit_template: '✏️ Edit Template',
