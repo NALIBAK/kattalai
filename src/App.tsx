@@ -17,6 +17,7 @@ import { ManageCategories } from './pages/ManageCategories';
 import { RecycleBin } from './pages/RecycleBin';
 import { BulkImport } from './pages/BulkImport';
 import { MapHub } from './pages/MapHub';
+import { Vasool } from './pages/Vasool';
 import { ContactDeveloper } from './pages/ContactDeveloper';
 import { syncToGoogleDrive, getGoogleAccessToken, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from './utils/backup';
@@ -292,6 +293,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/devotees" element={<DevoteesList />} />
             <Route path="/map" element={<MapHub />} />
+            <Route path="/vasool" element={<Vasool />} />
             <Route path="/devotees/new" element={<DevoteeForm />} />
             <Route path="/devotees/:id" element={<DevoteeDetail />} />
             <Route path="/devotees/:id/edit" element={<DevoteeForm />} />

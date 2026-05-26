@@ -10,6 +10,7 @@ export function Navigation() {
     { path: '/broadcast', icon: '📢', label: 'Broadcast' },
     { path: '/cover-print', icon: '✉️', label: 'Covers' },
     { path: '/map', icon: '🗺️', label: 'Map' },
+    { path: '/vasool', icon: '🛣️', label: 'Vasool' },
     { path: '/settings', icon: '⚙️', label: 'Settings' }
   ];
 
