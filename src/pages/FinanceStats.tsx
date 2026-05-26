@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore } from '../store';
 import { getSubscriptionStatus } from '../db';
+import { useTranslation } from '../utils/i18n';
 
 export function FinanceStats() {
   const navigate = useNavigate();
   const { devotees, setFilterStatus } = useDevoteeStore();
   const [showBalance, setShowBalance] = useState(true);
+  const { t } = useTranslation();
 
   // ── Calculation Logic ──
   const totalCollected = devotees.reduce((sum, d) => sum + (d.amount_paid || 0), 0);
@@ -31,7 +33,7 @@ export function FinanceStats() {
         <button className="btn-icon" onClick={() => navigate('/profile')}>
           ←
         </button>
-        <h3 className="m-0">Temple Ledger</h3>
+        <h3 className="m-0">{t('ledger_title')}</h3>
         <div style={{ width: 40 }} /> {/* spacer */}
       </div>
 
@@ -41,7 +43,7 @@ export function FinanceStats() {
         background: 'linear-gradient(135deg, rgba(212,175,55,0.05), rgba(0,0,0,0.3))' 
       }}>
         <div className="flex-between mb-12">
-          <span className="text-muted text-sm fw-600">Total Collected Dues</span>
+          <span className="text-muted text-sm fw-600">{t('ledger_collected')}</span>
           <button 
             className="btn btn-ghost" 
             style={{ 
@@ -52,7 +54,7 @@ export function FinanceStats() {
             }}
             onClick={() => setShowBalance(!showBalance)}
           >
-            {showBalance ? '🕶️ Hide' : '👁️ Show'}
+            {showBalance ? '🕶️' : '👁️'}
           </button>
         </div>
         <h1 className="m-0 fw-700" style={{ color: 'var(--gold)', fontSize: '2.5rem' }}>
@@ -64,15 +66,15 @@ export function FinanceStats() {
         border: '1px solid rgba(220,53,69,0.3)', 
         background: 'linear-gradient(135deg, rgba(220,53,69,0.05), rgba(0,0,0,0.3))' 
       }}>
-        <span className="text-muted text-sm fw-600 block mb-12">Total Pending Dues</span>
+        <span className="text-muted text-sm fw-600 block mb-12">{t('ledger_pending')}</span>
         <h1 className="m-0 fw-700" style={{ color: 'var(--red)', fontSize: '2.5rem' }}>
           ₹{totalPending.toLocaleString('en-IN')}
         </h1>
       </div>
 
       {/* Subscription Breakdown Header */}
-      <h4 className="mb-16 text-2">Subscription Breakdown</h4>
-      <p className="text-xs text-muted mb-16">Tap on any status block to view filtered devotees directly.</p>
+      <h4 className="mb-16 text-2">{t('ledger_breakdown')}</h4>
+      <p className="text-xs text-muted mb-16">{t('ledger_breakdown_desc')}</p>
 
       {/* Breakdown Grid */}
       <div className="flex flex-col gap-12 mb-24">
@@ -88,8 +90,8 @@ export function FinanceStats() {
           <div className="flex gap-12" style={{ alignItems: 'center' }}>
             <span style={{ color: '#28a745', fontSize: '1.5rem' }}>🟢</span>
             <div>
-              <h5 className="m-0 fw-600">Active</h5>
-              <span className="text-xs text-muted">Subscription is fully active</span>
+              <h5 className="m-0 fw-600">{t('ledger_active')}</h5>
+              <span className="text-xs text-muted">{t('ledger_active_desc')}</span>
             </div>
           </div>
           <span className="fw-700 text-lg" style={{ color: '#28a745', fontSize: '1.3rem' }}>
@@ -109,8 +111,8 @@ export function FinanceStats() {
           <div className="flex gap-12" style={{ alignItems: 'center' }}>
             <span style={{ color: '#ffc107', fontSize: '1.5rem' }}>🟡</span>
             <div>
-              <h5 className="m-0 fw-600">Expiring Soon</h5>
-              <span className="text-xs text-muted">Expires within 30 days</span>
+              <h5 className="m-0 fw-600">{t('ledger_expiring')}</h5>
+              <span className="text-xs text-muted">{t('ledger_expiring_desc')}</span>
             </div>
           </div>
           <span className="fw-700 text-lg" style={{ color: '#ffc107', fontSize: '1.3rem' }}>
@@ -130,8 +132,8 @@ export function FinanceStats() {
           <div className="flex gap-12" style={{ alignItems: 'center' }}>
             <span style={{ color: '#dc3545', fontSize: '1.5rem' }}>🔴</span>
             <div>
-              <h5 className="m-0 fw-600">Expired</h5>
-              <span className="text-xs text-muted">Subscription has run out</span>
+              <h5 className="m-0 fw-600">{t('ledger_expired')}</h5>
+              <span className="text-xs text-muted">{t('ledger_expired_desc')}</span>
             </div>
           </div>
           <span className="fw-700 text-lg" style={{ color: '#dc3545', fontSize: '1.3rem' }}>

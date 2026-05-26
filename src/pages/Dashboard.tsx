@@ -1,48 +1,50 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from '../utils/i18n';
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const chapters = [
     {
-      num: 'Chapter 1',
-      title: '👥 Devotee Records',
-      desc: 'View, search, and manage devotees and their family members.',
+      num: t('ch1_num'),
+      title: t('ch1_title'),
+      desc: t('ch1_desc'),
       path: '/devotees',
       badge: 'Registry'
     },
     {
-      num: 'Chapter 2',
-      title: '🛣️ Vasool Tour Planner',
-      desc: 'Plan optimized collection rounds and track pending dues on the go.',
+      num: t('ch2_num'),
+      title: t('ch2_title'),
+      desc: t('ch2_desc'),
       path: '/vasool',
       badge: 'Vasool'
     },
     {
-      num: 'Chapter 3',
-      title: '🗺️ Temple Map Hub',
-      desc: 'Explore devotee locations visually on the map and export coordinates.',
+      num: t('ch3_num'),
+      title: t('ch3_title'),
+      desc: t('ch3_desc'),
       path: '/map',
       badge: 'Map Hub'
     },
     {
-      num: 'Chapter 4',
-      title: '📢 Broadcast Alerts',
-      desc: 'Send WhatsApp notifications, festival greetings, and due reminders.',
+      num: t('ch4_num'),
+      title: t('ch4_title'),
+      desc: t('ch4_desc'),
       path: '/broadcast',
       badge: 'Broadcast'
     },
     {
-      num: 'Chapter 5',
-      title: '✉️ Envelope Printing',
-      desc: 'Print C6 custom envelopes and A4 sheet address labels with Speed Post barcodes.',
+      num: t('ch5_num'),
+      title: t('ch5_title'),
+      desc: t('ch5_desc'),
       path: '/cover-print',
       badge: 'Printing'
     },
     {
-      num: 'Chapter 6',
-      title: '⚙️ System Settings',
-      desc: 'Configure temple options, manage categories, recycle bin, or run database syncs.',
+      num: t('ch6_num'),
+      title: t('ch6_title'),
+      desc: t('ch6_desc'),
       path: '/settings',
       badge: 'Settings'
     }
@@ -63,14 +65,14 @@ export function Dashboard() {
       >
         <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '8px' }}>🛕</span>
         <h2 className="m-0 fw-700" style={{ color: 'var(--gold)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-          Sri Kattalai Registry
+          {t('book_title')}
         </h2>
         <p className="text-xs text-muted m-0 mt-8" style={{ fontStyle: 'italic', letterSpacing: '0.5px' }}>
-          "Spiritual Devotee Management & Ledger"
+          {t('book_subtitle')}
         </p>
       </div>
 
-      <h4 className="mb-16 text-2 fw-600" style={{ letterSpacing: '0.5px' }}>📖 Table of Chapters</h4>
+      <h4 className="mb-16 text-2 fw-600" style={{ letterSpacing: '0.5px' }}>{t('book_chapters')}</h4>
 
       {/* Chapters Grid */}
       <div className="flex flex-col gap-16">

@@ -115,6 +115,7 @@ interface SettingsState {
   updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
   setTempleName: (n: string) => Promise<void>;
   setTempleAddress: (a: string) => Promise<void>;
+  setLanguage: (l: 'en' | 'ta') => Promise<void>;
   setGDriveSetting: (key: 'gDriveLinked' | 'gDriveAutoSync' | 'gDriveLastSync', value: boolean | string | null) => Promise<void>;
   
   // Template Actions
@@ -129,7 +130,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   defaultAmount: 1200,
   prasadhamRule: 'per_member',
   theme: 'dark',
-  language: 'en',
+  language: 'ta',
   notifyDaysBefore: 30,
   broadcastResetDay: 1,
   messageTemplates: [],
@@ -144,7 +145,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     let theme = await getSetting('theme', 'dark') as string;
     if (theme === 'system') theme = 'dark'; // Migrate away from system
     
-    const language = await getSetting('language', 'en');
+    const language = await getSetting('language', 'ta');
     const notifyDaysBefore = await getSetting('notify_days_before', 30);
     const broadcastResetDay = await getSetting('broadcast_reset_day', 1);
     const gDriveLinked = await getSetting('gdrive_linked', false);
@@ -187,6 +188,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTempleAddress: async (a) => {
     set({ templeAddress: a });
     await setSetting('temple_address', a);
+  },
+  setLanguage: async (l) => {
+    set({ language: l });
+    await setSetting('language', l);
   },
   setGDriveSetting: async (key, value) => {
     set({ [key]: value } as unknown as Partial<SettingsState>);

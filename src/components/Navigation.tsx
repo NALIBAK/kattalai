@@ -1,13 +1,15 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from '../utils/i18n';
 
 export function Navigation() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const navItems = [
-    { path: '/', icon: '📖', label: 'Book' },
-    { path: '/devotees', icon: '👥', label: 'Devotees' },
-    { path: '/profile', icon: '👤', label: 'Profile' }
+    { path: '/', icon: '📖', label: t('nav_book') },
+    { path: '/devotees', icon: '👥', label: t('nav_devotees') },
+    { path: '/profile', icon: '👤', label: t('nav_profile') }
   ];
 
   return (

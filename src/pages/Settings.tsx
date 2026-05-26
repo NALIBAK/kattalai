@@ -6,16 +6,18 @@ import { restoreFromBackupBlob } from '../utils/backup';
 import { allowPush } from '../utils/syncLock';
 import { PlanGate } from '../components/PlanGate';
 import JSZip from 'jszip';
+import { useTranslation } from '../utils/i18n';
 
 export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useToastStore();
+  const { t } = useTranslation();
   
   // Stores
   const { 
-    theme, defaultAmount, 
+    theme, defaultAmount, language,
     messageTemplates,
-    setTheme, setDefaultAmount,
+    setTheme, setDefaultAmount, setLanguage,
     addTemplate, updateTemplate, removeTemplate 
   } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
@@ -404,14 +406,14 @@ export function Settings() {
     <>
       <div>
         <div className="section mb-16">
-          <h2 className="mb-16">Settings</h2>
+          <h2 className="mb-16">{t('settings_title')}</h2>
 
           {/* Global Settings */}
           <div className="card mb-16">
-            <h4 className="text-gold mb-16">Preferences</h4>
+            <h4 className="text-gold mb-16">{t('settings_pref')}</h4>
             <div className="flex-between mb-16">
               <div>
-                <div className="fw-600">Theme</div>
+                <div className="fw-600">{t('settings_theme')}</div>
               </div>
               <button 
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -421,9 +423,50 @@ export function Settings() {
                 {theme === 'dark' ? '🌙' : '☀️'}
               </button>
             </div>
+
+            {/* Language Selection Toggle */}
+            <div className="flex-between mb-16">
+              <div>
+                <div className="fw-600">{t('settings_lang')}</div>
+              </div>
+              <div className="flex gap-8" style={{ background: 'var(--surface-2)', padding: '4px', borderRadius: '8px' }}>
+                <button
+                  onClick={() => setLanguage('ta')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: language === 'ta' ? 'var(--gold)' : 'transparent',
+                    color: language === 'ta' ? '#000' : 'var(--text-3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🇮🇳 தமிழ்
+                </button>
+                <button
+                  onClick={() => setLanguage('en')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: language === 'en' ? 'var(--gold)' : 'transparent',
+                    color: language === 'en' ? '#000' : 'var(--text-3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🇬🇧 English
+                </button>
+              </div>
+            </div>
             
             <div className="form-group">
-              <label className="form-label">Default Annual Amount (₹)</label>
+              <label className="form-label">{t('settings_default_amt')}</label>
               <input className="form-input" type="number" value={defaultAmount} onChange={e => setDefaultAmount(Number(e.target.value) || 0)} />
             </div>
           </div>
@@ -478,14 +521,14 @@ export function Settings() {
 
           {/* ── VCF / Contacts Import & Export ── */}
           <div className="card mb-16">
-            <h4 className="m-0 text-gold mb-4">📇 Contacts (.vcf)</h4>
-            <div className="text-sm text-2 mb-16">Import contacts from your phone as devotees, or export all devotees as a .vcf contacts file.</div>
+            <h4 className="m-0 text-gold mb-4">{t('settings_contacts')}</h4>
+            <div className="text-sm text-2 mb-16">{t('settings_contacts_desc')}</div>
             <div className="grid-2">
               <button className="btn btn-primary btn-sm" onClick={() => vcfInputRef.current?.click()}>
-                📤 Import VCF
+                {t('settings_import_vcf')}
               </button>
               <button className="btn btn-ghost btn-sm" onClick={handleExportVCF}>
-                📥 Export VCF
+                {t('settings_export_vcf')}
               </button>
             </div>
             <input type="file" accept=".vcf,text/vcard" ref={vcfInputRef} style={{ display: 'none' }} onChange={handleVCFFileChange} />
@@ -493,18 +536,18 @@ export function Settings() {
 
           {/* ── Google My Maps CSV Export ── */}
           <div className="card mb-16">
-            <h4 className="m-0 text-gold mb-4">🌍 Google My Maps Export</h4>
-            <div className="text-sm text-2 mb-16">Export devotee GPS coordinates and addresses as a CSV specifically formatted for one-click import into Google My Maps.</div>
+            <h4 className="m-0 text-gold mb-4">{t('settings_gmap_export')}</h4>
+            <div className="text-sm text-2 mb-16">{t('settings_gmap_desc')}</div>
             <button className="btn btn-ghost w-full btn-sm flex-center gap-8" onClick={handleExportGMapCSV}>
-              🗺️ Export CSV for Google Maps
+              {t('settings_gmap_btn')}
             </button>
           </div>
 
           {/* ── Custom Categories ── */}
           <div className="card mb-16 flex-between">
             <div>
-              <h4 className="m-0 text-gold mb-4">Categories & Nakshathirams</h4>
-              <div className="text-sm text-2">Manage colors, and custom VIP badges.</div>
+              <h4 className="m-0 text-gold mb-4">{t('settings_categories')}</h4>
+              <div className="text-sm text-2">{t('settings_categories_desc')}</div>
             </div>
             <button className="btn btn-ghost" onClick={() => navigate('/settings/categories')}>Manage</button>
           </div>
@@ -512,24 +555,24 @@ export function Settings() {
           {/* ── Recycle Bin ── */}
           <div className="card mb-16 flex-between">
             <div>
-              <h4 className="m-0 text-gold mb-4">Recycle Bin</h4>
-              <div className="text-sm text-2">Restore or permanently delete removed devotees.</div>
+              <h4 className="m-0 text-gold mb-4">{t('settings_recycle_bin')}</h4>
+              <div className="text-sm text-2">{t('settings_recycle_desc')}</div>
             </div>
             <button className="btn btn-ghost" onClick={() => navigate('/settings/recycle-bin')}>View</button>
           </div>
 
           {/* Backup & Restore */}
           <div className="card mb-32" style={{ border: '2px dashed var(--gold)' }}>
-            <h4 className="text-gold mb-16">Custom Data Backup & Restore</h4>
+            <h4 className="text-gold mb-16">{t('settings_backup_title')}</h4>
             <div className="text-sm text-2 mb-16">
-              Export a `ZIP` file containing your data. Use this for manual offline backups or to move data between devices manually.
+              {t('settings_backup_desc')}
             </div>
             <div className="grid-2">
               <button className="btn w-full flex-center" style={{ background: '#1890FF', color: '#fff' }} onClick={handleExportBackup} disabled={isExporting}>
-                {isExporting ? '...' : '📩 Export Backup'}
+                {isExporting ? '...' : t('settings_export_zip')}
               </button>
               <button className="btn btn-ghost w-full flex-center" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
-                {isImporting ? '...' : '📂 Restore from ZIP'}
+                {isImporting ? '...' : t('settings_import_zip')}
               </button>
               <input type="file" accept=".zip" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImportBackup} />
             </div>

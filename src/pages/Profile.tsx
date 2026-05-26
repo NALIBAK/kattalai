@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
+import { useTranslation } from '../utils/i18n';
 import { verifyAccess } from '../auth';
 import { getGoogleAccessToken, fetchLatestBackup, fetchLegacyBackup, downloadBackup, syncToGoogleDrive } from '../utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from '../utils/backup';
@@ -12,6 +13,7 @@ export function Profile() {
   const { user, plan, setCache, logout } = useAuthStore();
   const { showToast } = useToastStore();
   const { refresh: refreshDevotees } = useDevoteeStore();
+  const { t } = useTranslation();
   const { loadCategories } = useCategoryStore();
   const { templeAddress, setTempleAddress, setGDriveSetting } = useSettingsStore();
   
@@ -198,7 +200,7 @@ export function Profile() {
         <button className="btn-icon" onClick={() => navigate(-1)}>
           ←
         </button>
-        <h3 className="m-0">User Profile</h3>
+        <h3 className="m-0">{t('profile_title')}</h3>
         <div style={{ width: 40 }} /> {/* spacer */}
       </div>
 
@@ -229,8 +231,8 @@ export function Profile() {
         <div className="flex gap-16" style={{ alignItems: 'center' }}>
           <span style={{ fontSize: '2rem' }}>📈</span>
           <div className="text-left">
-            <h4 className="m-0" style={{ color: 'var(--gold)' }}>View Temple Finance Ledger</h4>
-            <p className="text-xs text-muted m-0 mt-4">Subscription analytics, total collections, and pending dues</p>
+            <h4 className="m-0" style={{ color: 'var(--gold)' }}>{t('profile_ledger_title')}</h4>
+            <p className="text-xs text-muted m-0 mt-4">{t('profile_ledger_desc')}</p>
           </div>
         </div>
         <span style={{ color: 'var(--gold)', fontSize: '1.2rem', fontWeight: 'bold' }}>→</span>
@@ -238,9 +240,9 @@ export function Profile() {
 
       {/* Return Address Card */}
       <div className="card mb-24">
-        <h4 className="mb-16 text-2">Return Address Settings</h4>
+        <h4 className="mb-16 text-2">{t('profile_return_title')}</h4>
         <p className="text-xs text-muted mb-16">
-          Provide your return address block to print it as the sender (FROM) address on Speed Post envelopes and labels.
+          {t('profile_return_desc')}
         </p>
         <div className="mb-16">
           <label className="text-xs text-muted block mb-4">FROM</label>
@@ -265,21 +267,21 @@ export function Profile() {
           className="btn btn-primary btn-full"
           onClick={handleSaveAddress}
         >
-          💾 Save Address
+          {t('profile_save_btn')}
         </button>
       </div>
 
       <div className="card mb-24">
-        <h4 className="mb-16 text-2">Subscription Details</h4>
+        <h4 className="mb-16 text-2">{t('profile_sub_details')}</h4>
         <div className="flex-between mb-12">
-          <span className="text-muted">Current Plan</span>
+          <span className="text-muted">{t('profile_current_plan')}</span>
           <span className={`badge plan-${plan || 'free'}`}>
             {(plan || 'free').toUpperCase()}
           </span>
         </div>
         {plan !== 'free' && (
         <div className="flex-between mb-16">
-          <span className="text-muted">Valid Until</span>
+          <span className="text-muted">{t('profile_valid_until')}</span>
           <span className="fw-600">{user.real_expiry || 'Lifetime'}</span>
         </div>
         )}
@@ -290,9 +292,9 @@ export function Profile() {
           disabled={isRefreshing}
         >
           {isRefreshing ? (
-            <><span className="nav-icon animate-spin">⟳</span> Refreshing...</>
+            <><span className="nav-icon animate-spin">⟳</span> {t('loading')}</>
           ) : (
-            'Refresh Subscription'
+            t('profile_refresh_sub')
           )}
         </button>
       </div>
@@ -332,9 +334,9 @@ export function Profile() {
       )}
 
       <div className="card mb-24">
-        <h4 className="mb-16 text-2">Manual Cloud Sync</h4>
+        <h4 className="mb-16 text-2">{t('profile_cloud_sync')}</h4>
         <p className="text-sm text-muted mb-16">
-          Compare and synchronize your data. You can push local changes up, or pull cloud changes down.
+          {t('profile_sync_desc')}
         </p>
         <div className="grid-2">
           <button 
@@ -343,7 +345,7 @@ export function Profile() {
             disabled={isPushing || isPulling}
             style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
           >
-            {isPushing ? '⏳ Pushing...' : '📤 Push to Cloud'}
+            {isPushing ? '⏳ ...' : t('profile_push')}
           </button>
           <button 
             className="btn btn-ghost w-full" 
@@ -351,13 +353,13 @@ export function Profile() {
             disabled={isPulling || isPushing}
             style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
           >
-            {isPulling ? '⏳ Pulling...' : '📥 Pull from Cloud'}
+            {isPulling ? '⏳ ...' : t('profile_pull')}
           </button>
         </div>
       </div>
 
       <button className="btn btn-ghost btn-full" style={{ color: 'var(--red)', borderColor: 'var(--red)' }} onClick={handleLogout}>
-         Log Out
+         {t('profile_logout')}
       </button>
 
       <style>{`

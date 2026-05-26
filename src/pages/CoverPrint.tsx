@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
+import { useTranslation } from '../utils/i18n';
 import type { Devotee } from '../db';
 
 type PrintMode = 'envelope' | 'labels';
@@ -69,6 +70,7 @@ export function CoverPrint() {
   const { devotees } = useDevoteeStore();
   const { categories } = useCategoryStore();
   const { templeAddress } = useSettingsStore();
+  const { t } = useTranslation();
 
   const [filterCategory, setFilterCategory] = useState('');
   const [settings, setSettings] = useState<PrintSettings>({
@@ -148,48 +150,48 @@ export function CoverPrint() {
       {/* ── Settings Sidebar ── */}
       <div className="no-print">
         <div className="section flex-between mb-16">
-          <h2 className="mb-0">✉️ Cover & Labels</h2>
+          <h2 className="mb-0">{t('print_title')}</h2>
           <button className="btn btn-primary btn-sm" onClick={handlePrint} disabled={hasMissingAddress}>
-            🖨️ Print Covers
+            {t('print_btn')}
           </button>
         </div>
 
         {/* Warning Banner if FROM address is not set */}
         {hasMissingAddress && (
           <div className="card mb-16 text-center" style={{ border: '2px dashed var(--red)', background: 'rgba(246,70,93,0.05)', padding: '16px' }}>
-            <span style={{ fontSize: '2rem' }}>⚠️</span>
-            <h4 style={{ color: 'var(--red)', margin: '8px 0' }}>Sender Address Required</h4>
+            <span style={{ fontSize: '2.5rem' }}>⚠️</span>
+            <h4 style={{ color: 'var(--red)', margin: '8px 0' }}>{t('print_warning_title')}</h4>
             <p className="text-xs text-muted mb-12">
-              You must set your organization Name & Return Address in your profile to use India Speed Post optimization.
+              {t('print_warning_desc')}
             </p>
             <button className="btn btn-primary btn-sm btn-full" onClick={() => navigate('/profile')}>
-              ⚙️ Go to Profile to Set Address
+              {t('print_warning_btn')}
             </button>
           </div>
         )}
 
         <div className="card mb-16">
-          <h4 className="text-gold mb-12">Print Settings</h4>
+          <h4 className="text-gold mb-12">{t('print_settings')}</h4>
           
           <div className="form-group">
-            <label className="form-label">Target Category</label>
+            <label className="form-label">{t('print_category')}</label>
             <select className="form-input" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-              <option value="">All Categories</option>
+              <option value="">{t('print_all_cats')}</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
 
           <div className="grid-2">
             <div className="form-group">
-              <label className="form-label">Print Mode</label>
+              <label className="form-label">{t('print_mode')}</label>
               <select className="form-input" value={settings.mode} onChange={e => updateSetting('mode', e.target.value as PrintMode)}>
-                <option value="envelope">C6 Envelope (1/page)</option>
-                <option value="labels">A4 Label Sheet (Grid)</option>
+                <option value="envelope">{t('print_c6')}</option>
+                <option value="labels">{t('print_a4')}</option>
               </select>
             </div>
             {settings.mode === 'labels' && (
               <div className="form-group">
-                <label className="form-label">Grid Layout</label>
+                <label className="form-label">{t('print_layout')}</label>
                 <select className="form-input" value={settings.grid} onChange={e => updateSetting('grid', e.target.value as GridType)}>
                   <option value="2x4">2 x 4 (8 labels)</option>
                   <option value="2x5">2 x 5 (10 labels)</option>
@@ -206,47 +208,47 @@ export function CoverPrint() {
                 checked={settings.isSpeedPost} 
                 onChange={e => updateSetting('isSpeedPost', e.target.checked)} 
               />
-              <span className="fw-600" style={{ color: 'var(--gold)' }}>🇮🇳 Enable Indian Speed Post Layout</span>
+              <span className="fw-600" style={{ color: 'var(--gold)' }}>{t('print_speedpost_enable')}</span>
             </label>
           </div>
 
-          <h5 className="text-gold mt-12 mb-8">Style & Color</h5>
+          <h5 className="text-gold mt-12 mb-8">{t('print_style_color')}</h5>
           <div className="grid-3">
             <div className="form-group">
-              <label className="form-label">Color</label>
+              <label className="form-label">{t('print_color')}</label>
               <input type="color" className="form-input" style={{ padding: 2, height: 44 }} value={settings.textColor} onChange={e => updateSetting('textColor', e.target.value)} />
             </div>
             <div className="form-group">
-              <label className="form-label">Weight</label>
+              <label className="form-label">{t('print_weight')}</label>
               <button 
                 className={`btn btn-sm w-full ${settings.isBold ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => updateSetting('isBold', !settings.isBold)}
               >
-                {settings.isBold ? 'Bold' : 'Normal'}
+                {settings.isBold ? t('print_weight_bold') : t('print_weight_normal')}
               </button>
             </div>
             <div className="form-group">
-              <label className="form-label">Size (pt)</label>
+              <label className="form-label">{t('print_size')}</label>
               <input type="number" className="form-input" value={settings.baseFontSize} onChange={e => updateSetting('baseFontSize', Number(e.target.value))} />
             </div>
           </div>
 
-          <h5 className="text-gold mt-12 mb-8">Margins (mm)</h5>
+          <h5 className="text-gold mt-12 mb-8">{t('print_margins')}</h5>
           <div className="grid-2">
             <div className="form-group">
-              <label className="form-label">Top</label>
+              <label className="form-label">{t('print_top')}</label>
               <input type="number" className="form-input" value={settings.marginTop} onChange={e => updateSetting('marginTop', Number(e.target.value))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Bottom</label>
+              <label className="form-label">{t('print_bottom')}</label>
               <input type="number" className="form-input" value={settings.marginBottom} onChange={e => updateSetting('marginBottom', Number(e.target.value))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Left</label>
+              <label className="form-label">{t('print_left')}</label>
               <input type="number" className="form-input" value={settings.marginLeft} onChange={e => updateSetting('marginLeft', Number(e.target.value))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Right</label>
+              <label className="form-label">{t('print_right')}</label>
               <input type="number" className="form-input" value={settings.marginRight} onChange={e => updateSetting('marginRight', Number(e.target.value))} />
             </div>
           </div>
