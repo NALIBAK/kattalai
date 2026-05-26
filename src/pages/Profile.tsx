@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useToastStore, useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
 import { verifyAccess } from '../auth';
@@ -13,11 +13,23 @@ export function Profile() {
   const { showToast } = useToastStore();
   const { refresh: refreshDevotees } = useDevoteeStore();
   const { loadCategories } = useCategoryStore();
-  const { templeName, setTempleName, templeAddress, setTempleAddress, setGDriveSetting } = useSettingsStore();
+  const { templeAddress, setTempleAddress, setGDriveSetting } = useSettingsStore();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [fromInput, setFromInput] = useState('');
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setFromInput(templeAddress);
+    });
+  }, [templeAddress]);
+
+  const handleSaveAddress = async () => {
+    await setTempleAddress(fromInput);
+    showToast('FROM address saved successfully!', 'success');
+  };
 
   if (!user) return null;
 
@@ -83,7 +95,7 @@ export function Profile() {
         showToast('Fetching cloud version for comparison...', 'info');
         const blob = await downloadBackup(token, existing.id);
         const cloudPreview = await previewBackupBlob(blob);
-        cloudDevotees = (cloudPreview.rawData as any).devotees || [];
+        cloudDevotees = (cloudPreview.rawData as { devotees?: Devotee[] }).devotees || [];
       }
       
       const localDevotees = useDevoteeStore.getState().devotees;
@@ -138,7 +150,7 @@ export function Profile() {
       showToast('Fetching cloud version for comparison...', 'info');
       const blob = await downloadBackup(token, existingFileId);
       const cloudPreview = await previewBackupBlob(blob);
-      const cloudDevotees: Devotee[] = (cloudPreview.rawData as any).devotees || [];
+      const cloudDevotees: Devotee[] = (cloudPreview.rawData as { devotees?: Devotee[] }).devotees || [];
       const localDevotees = useDevoteeStore.getState().devotees;
       
       const { added, removed, changed } = compareDevotees(cloudDevotees, localDevotees);
@@ -226,29 +238,12 @@ export function Profile() {
 
       {/* Return Address Card */}
       <div className="card mb-24">
-        <h4 className="mb-16 text-2">Return Address Settings (FROM)</h4>
+        <h4 className="mb-16 text-2">Return Address Settings</h4>
         <p className="text-xs text-muted mb-16">
-          Provide your temple/organization's address to print it as the sender (FROM) address on Speed Post envelopes and labels.
+          Provide your return address block to print it as the sender (FROM) address on Speed Post envelopes and labels.
         </p>
         <div className="mb-16">
-          <label className="text-xs text-muted block mb-4">Temple/Organization Name</label>
-          <input 
-            type="text" 
-            className="input w-full"
-            style={{ 
-              background: 'var(--surface-2)', 
-              border: '1px solid var(--border)', 
-              color: 'var(--text-1)',
-              padding: '10px',
-              borderRadius: '6px',
-            }}
-            value={templeName}
-            onChange={(e) => setTempleName(e.target.value)}
-            placeholder="e.g. Sri Chidambaram Natarajar Temple"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-muted block mb-4">Sender Return Address Details</label>
+          <label className="text-xs text-muted block mb-4">FROM</label>
           <textarea 
             className="input w-full"
             style={{ 
@@ -257,15 +252,21 @@ export function Profile() {
               color: 'var(--text-1)',
               padding: '10px',
               borderRadius: '6px',
-              minHeight: '80px',
+              minHeight: '110px',
               resize: 'vertical',
               fontFamily: 'inherit',
             }}
-            value={templeAddress}
-            onChange={(e) => setTempleAddress(e.target.value)}
-            placeholder="e.g. East Car Street, Chidambaram, Tamil Nadu - 608001"
+            value={fromInput}
+            onChange={(e) => setFromInput(e.target.value)}
+            placeholder="e.g.&#10;Sri Chidambaram Natarajar Temple&#10;East Car Street, Chidambaram&#10;Tamil Nadu - 608001"
           />
         </div>
+        <button 
+          className="btn btn-primary btn-full"
+          onClick={handleSaveAddress}
+        >
+          💾 Save Address
+        </button>
       </div>
 
       <div className="card mb-24">

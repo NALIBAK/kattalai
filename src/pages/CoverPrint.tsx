@@ -68,7 +68,7 @@ export function CoverPrint() {
   const navigate = useNavigate();
   const { devotees } = useDevoteeStore();
   const { categories } = useCategoryStore();
-  const { templeName, templeAddress } = useSettingsStore();
+  const { templeAddress } = useSettingsStore();
 
   const [filterCategory, setFilterCategory] = useState('');
   const [settings, setSettings] = useState<PrintSettings>({
@@ -89,7 +89,7 @@ export function CoverPrint() {
   }, [devotees, filterCategory]);
 
   const handlePrint = () => {
-    if (settings.isSpeedPost && (!templeAddress || !templeName)) {
+    if (settings.isSpeedPost && !templeAddress) {
       alert('Please set your Sender Return Address (FROM) in your Profile first!');
       return;
     }
@@ -125,7 +125,7 @@ export function CoverPrint() {
   // QR Payload creator
   const getQRPayload = (devotee: Devotee, index: number) => {
     const tracking = getMockTrackingNumber(index);
-    return `SPEED POST\nTRACKING: ${tracking}\nFROM:\n${templeName}\n${templeAddress}\n\nTO:\n${devotee.name}\n${devotee.address}\n${devotee.city} - ${devotee.pincode || ''}\nPhone: ${devotee.phone}`;
+    return `SPEED POST\nTRACKING: ${tracking}\nFROM:\n${templeAddress}\n\nTO:\n${devotee.name}\n${devotee.address}\n${devotee.city} - ${devotee.pincode || ''}\nPhone: ${devotee.phone}`;
   };
 
   const getAutoFontSize = (devotee: Devotee) => {
@@ -141,7 +141,7 @@ export function CoverPrint() {
     return `${size}pt`;
   };
 
-  const hasMissingAddress = settings.isSpeedPost && (!templeAddress || !templeName);
+  const hasMissingAddress = settings.isSpeedPost && !templeAddress;
 
   return (
     <div className="page-content">
@@ -288,8 +288,7 @@ export function CoverPrint() {
                   <div className="address-section">
                     <div className="from-block">
                       <span className="section-label">FROM (SENDER):</span>
-                      <div className="from-text">{toPostalCase(templeName)}</div>
-                      <div className="from-addr">{toPostalCase(templeAddress)}</div>
+                      <div className="from-addr" style={{ whiteSpace: 'pre-line' }}>{toPostalCase(templeAddress)}</div>
                     </div>
 
                     <div className="to-block">

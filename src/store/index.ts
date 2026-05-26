@@ -141,7 +141,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const templeAddress = await getSetting('temple_address', '');
     const defaultAmount = await getSetting('default_amount', 200);
     const prasadhamRule = await getSetting('prasadham_rule', 'per_member');
-    let theme = await getSetting('theme', 'dark') as any;
+    let theme = await getSetting('theme', 'dark') as string;
     if (theme === 'system') theme = 'dark'; // Migrate away from system
     
     const language = await getSetting('language', 'en');
@@ -165,7 +165,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
     
     set({ 
-      templeName, templeAddress, defaultAmount, prasadhamRule, theme, language, 
+      templeName, templeAddress, defaultAmount, prasadhamRule, theme: theme as SettingsState['theme'], language, 
       notifyDaysBefore, broadcastResetDay,
       messageTemplates: templates,
       gDriveLinked, gDriveAutoSync, gDriveLastSync
