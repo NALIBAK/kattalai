@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useToastStore } from '../store';
 import { initGoogleAuth, signInWithGoogle, verifyAccess, validateCachedAuth, isSubscriptionExpired } from '../auth';
 import { AuthLayout } from '../components/AuthLayout';
+import { useTranslation } from '../utils/i18n';
 
 export function Login() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { setUser, setCache, cache } = useAuthStore();
   const { showToast } = useToastStore();
   const [isSigniningIn, setIsSigningIn] = useState(false);
@@ -22,9 +24,9 @@ export function Login() {
     
     initGoogleAuth().catch(e => {
       console.error('Failed to load Google Auth API', e);
-      showToast('Failed to load Google Sign-In', 'error');
+      showToast(t('login_failed'), 'error');
     });
-  }, [cache, navigate, showToast]);
+  }, [cache, navigate, showToast, t]);
 
   const handleLogin = async () => {
     try {
@@ -38,7 +40,8 @@ export function Login() {
         if (isSubscriptionExpired(newCache)) {
           navigate('/expired');
         } else {
-          showToast(`Welcome back, ${user.name}!`, 'success');
+          const welcomeMsg = t('save') === 'சேமி' ? `நல்வரவு, ${user.name}!` : `Welcome back, ${user.name}!`;
+          showToast(welcomeMsg, 'success');
           navigate('/');
         }
       } else {
@@ -47,7 +50,7 @@ export function Login() {
     } catch (error) {
       const err = error as { message?: string };
       if (err.message !== 'No credential') {
-        showToast(err.message || 'Login failed', 'error');
+        showToast(err.message || t('login_failed'), 'error');
       }
     } finally {
       setIsSigningIn(false);
@@ -56,8 +59,8 @@ export function Login() {
 
   return (
     <AuthLayout 
-      title="LOGIN" 
-      subtitle="SIVA Chidambaram"
+      title={t('login_title')} 
+      subtitle={t('login_subtitle')}
     >
       <div className="flex-col gap-16">
         <div id="google-signin-btn" className="flex-center w-full min-h-[44px]"></div>
@@ -66,11 +69,12 @@ export function Login() {
           className="btn btn-primary btn-full btn-lg" 
           onClick={handleLogin}
           disabled={isSigniningIn}
+          style={{ whiteSpace: 'normal', height: 'auto', minHeight: '52px', padding: '12px' }}
         >
           {isSigniningIn ? (
-            <><span className="nav-icon animate-spin">⟳</span> Signing in...</>
+            <><span className="nav-icon animate-spin">⟳</span> {t('login_signing_in')}</>
           ) : (
-            'Sign In with Google'
+            t('login_btn')
           )}
         </button>
       </div>

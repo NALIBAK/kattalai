@@ -225,6 +225,51 @@ export const translations = {
     bin_confirm_empty: '🚨 மிக முக்கிய எச்சரிக்கை: குப்பைத் தொட்டியை முழுமையாக காலி செய்ய விரும்புகிறீர்களா? அழிக்கப்பட்ட பக்தர்கள், குடும்ப உறுப்பினர்கள், மற்றும் கணக்குகள் அனைத்தும் நிரந்தரமாக அழிக்கப்படும். இந்தச் செயலை மாற்றியமைக்க முடியாது.',
     bin_empty_success: 'குப்பைத் தொட்டி முழுமையாக காலி செய்யப்பட்டது!',
     bin_empty_failed: 'தொட்டியை காலி செய்வதில் தோல்வி',
+
+    // Login Screen
+    login_title: 'உள்நுழைவு',
+    login_subtitle: 'சிவ சிதம்பரம்',
+    login_signing_in: '⏳ உள்நுழையப்படுகிறது...',
+    login_btn: 'கூகுள் மூலம் உள்நுழைக',
+    login_failed: 'உள்நுழைவு தோல்வியடைந்தது',
+
+    // Pending Approval Screen
+    pending_title: 'சரிபார்ப்பு நிலுவையில் உள்ளது',
+    pending_subtitle: 'அனுமதி சரிபார்ப்பு தேவை',
+    pending_not_verified: 'கணக்கு சரிபார்க்கப்படவில்லை',
+    pending_desc: 'உங்கள் மின்னஞ்சல் {email} இன்னும் நிர்வாகியால் அங்கீகரிக்கப்படவில்லை, அல்லது உங்கள் சந்தா காலம் முடிவடைந்துள்ளது.',
+    pending_contact_whatsapp: '💬 வாட்ஸ்அப்பில் நிர்வாகியைத் தொடர்பு கொள்ளவும்',
+    pending_different_account: 'வேறு கணக்கைப் பயன்படுத்தவும்',
+
+    // Contact Developer Screen
+    contact_title: 'டெவலப்பரைத் தொடர்பு கொள்ளவும்',
+    contact_desc: 'உங்கள் திட்டத்தை மேம்படுத்த, கணக்கை அங்கீகரிக்க அல்லது தொழில்நுட்ப ஆதரவை பெற, இவரைத் தொடர்பு கொள்ளவும்:',
+    contact_email_label: 'உங்கள் பதிவு செய்யப்பட்ட மின்னஞ்சல்',
+    contact_email_desc: 'கணக்கை அடையாளம் காண இந்த மின்னஞ்சலை டெவலப்பருக்கு வழங்கவும்.',
+    contact_back: '← பின்செல்லவும்',
+
+    // Subscription Expired Screen
+    expired_title: 'சந்தா முடிவடைந்தது',
+    expired_subtitle: 'உங்கள் கணக்கு புதுப்பிக்கப்பட வேண்டும்',
+    expired_header: 'திட்டம் காலாவதியானது',
+    expired_desc: 'உங்கள் சந்தா காலம் முடிந்துவிட்டது. அனைத்து அம்சங்களையும் தொடர்ந்து பயன்படுத்த நிர்வாகியைத் தொடர்பு கொண்டு உங்கள் திட்டத்தை புதுப்பிக்கவும்.',
+    expired_email: 'மின்னஞ்சல்',
+    expired_plan: 'திட்டம்',
+    expired_expired_on: 'காலாவதியான நாள்',
+    expired_refresh: '🔄 சந்தா நிலையைச் சரிபார்',
+    expired_checking: '⏳ சரிபார்க்கப்படுகிறது...',
+    expired_still_expired: 'சந்தா இன்னும் காலாவதியான நிலையில் உள்ளது.',
+
+    // Upgrade Plan Screen
+    upgrade_title: 'திட்டத்தை மேம்படுத்தவும்',
+    upgrade_current_plan: 'உங்களது தற்போதைய திட்டம்',
+    upgrade_plus_desc: 'செயலில் உள்ள கோயில் நிர்வாகிகளுக்கு சிறந்தது',
+    upgrade_pro_desc: 'முழுமையான ஆற்றல் — அனைத்தும் திறக்கப்பட்டது',
+    upgrade_recommended: 'பரிந்துரைக்கப்படுகிறது',
+    upgrade_to_plus: '💬 வாட்ஸ்அப் மூலம் Plus-க்கு மேம்படுத்து',
+    upgrade_to_pro: '💬 வாட்ஸ்அப் மூலம் Pro-க்கு மேம்படுத்து',
+    upgrade_pro_congrats: '🎉 நீங்கள் சிறந்த திட்டத்தில் உள்ளீர்கள்!',
+    upgrade_pro_enjoy: 'நீங்கள் அனைத்து அம்சங்களையும் பயன்படுத்தலாம். மகிழுங்கள்!',
   },
   en: {
     // Navigation
@@ -450,6 +495,51 @@ export const translations = {
     bin_confirm_empty: '🚨 CRITICAL WARNING: Are you sure you want to EMPTY the Recycle Bin? All deleted devotees, their family members, and payments will be PERMANENTLY lost. This action CANNOT be undone.',
     bin_empty_success: 'Recycle Bin emptied completely!',
     bin_empty_failed: 'Failed to empty bin',
+
+    // Login Screen
+    login_title: 'LOGIN',
+    login_subtitle: 'SIVA Chidambaram',
+    login_signing_in: '⏳ Signing in...',
+    login_btn: 'Sign In with Google',
+    login_failed: 'Login failed',
+
+    // Pending Approval Screen
+    pending_title: 'PENDING APPROVAL',
+    pending_subtitle: 'Access verification required',
+    pending_not_verified: 'Account Not Verified',
+    pending_desc: 'Your email {email} is not yet approved by the administrator, or your subscription has expired.',
+    pending_contact_whatsapp: '💬 Contact Admin on WhatsApp',
+    pending_different_account: 'Use a different account',
+
+    // Contact Developer Screen
+    contact_title: 'Contact Developer',
+    contact_desc: 'To upgrade your plan, approve your account, or request technical support, please contact:',
+    contact_email_label: 'YOUR REGISTERED EMAIL',
+    contact_email_desc: 'Please provide this email to the developer for account identification.',
+    contact_back: '← Go Back',
+
+    // Subscription Expired Screen
+    expired_title: 'SUBSCRIPTION EXPIRED',
+    expired_subtitle: 'Your plan needs renewal',
+    expired_header: 'Plan Expired',
+    expired_desc: 'Your subscription has ended. Please contact the admin to renew your plan and continue using all features.',
+    expired_email: 'EMAIL',
+    expired_plan: 'PLAN',
+    expired_expired_on: 'EXPIRED ON',
+    expired_refresh: '🔄 Refresh Subscription Status',
+    expired_checking: '⏳ Checking...',
+    expired_still_expired: 'Subscription is still expired.',
+
+    // Upgrade Plan Screen
+    upgrade_title: 'Upgrade Plan',
+    upgrade_current_plan: 'YOUR CURRENT PLAN',
+    upgrade_plus_desc: 'Best for active temple admins',
+    upgrade_pro_desc: 'Full power — everything unlocked',
+    upgrade_recommended: 'RECOMMENDED',
+    upgrade_to_plus: '💬 Upgrade to Plus via WhatsApp',
+    upgrade_to_pro: '💬 Upgrade to Pro via WhatsApp',
+    upgrade_pro_congrats: "You're on the best plan!",
+    upgrade_pro_enjoy: 'You have access to all features. Enjoy!',
   }
 };
 

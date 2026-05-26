@@ -18,7 +18,7 @@ export function DevoteesList() {
   
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set(['ALL']));
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set());
 
   const toggleCategory = (catId: string) => {
     const next = new Set(expandedCategoryIds);
@@ -150,26 +150,37 @@ export function DevoteesList() {
     
     return (
       <div key={id} className="mb-16">
-        {/* Category Header Card */}
+        {/* Category Header Card (Chapter style) */}
         <div 
           onClick={() => toggleCategory(id)}
-          className="card cursor-pointer flex-between"
+          className="card cursor-pointer hover-scale flex-between"
           style={{
-            padding: '16px 20px',
-            background: expanded ? 'rgba(212,175,55,0.06)' : 'var(--surface-2)',
-            border: `1.5px solid ${expanded ? 'var(--gold)' : 'var(--border)'}`,
-            borderRadius: '12px',
+            padding: '20px',
+            border: expanded ? '1.5px solid var(--gold)' : '1px solid var(--border)',
+            background: expanded ? 'linear-gradient(135deg, rgba(212,175,55,0.08) 0%, var(--surface-2) 100%)' : 'linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%)',
+            position: 'relative',
+            overflow: 'hidden',
             marginBottom: expanded && devoteesList.length > 0 ? '12px' : '0',
-            transition: 'all 0.2s',
+            transition: 'all 0.25s var(--ease)',
           }}
         >
-          <div className="flex-center gap-12">
+          {/* Elegant left border highlight */}
+          <div style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: '4px',
+            backgroundColor: 'var(--gold)',
+          }} />
+
+          <div className="flex-center gap-12" style={{ paddingLeft: '8px' }}>
             <span style={{ fontSize: '1.4rem' }}>📁</span>
-            <div className="fw-700" style={{ fontSize: '1.05rem', color: expanded ? 'var(--gold)' : 'var(--text-1)' }}>
+            <div className="fw-600" style={{ fontSize: '1.05rem', color: expanded ? 'var(--gold)' : 'var(--text-1)' }}>
               {title}
             </div>
-            <span className="text-xs text-muted">
-              ({count})
+            <span className="badge text-xs" style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--gold)', border: '1px solid rgba(212,175,55,0.2)' }}>
+              {count}
             </span>
           </div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-3)' }}>

@@ -338,20 +338,20 @@ export function Profile() {
         <p className="text-sm text-muted mb-16">
           {t('profile_sync_desc')}
         </p>
-        <div className="grid-2">
+        <div className="flex gap-12" style={{ flexWrap: 'wrap' }}>
           <button 
-            className="btn btn-ghost w-full" 
+            className="btn btn-ghost flex-1" 
             onClick={handlePush}
             disabled={isPushing || isPulling}
-            style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+            style={{ border: '1px solid var(--gold)', color: 'var(--gold)', whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px', minWidth: '140px' }}
           >
             {isPushing ? '⏳ ...' : t('profile_push')}
           </button>
           <button 
-            className="btn btn-ghost w-full" 
+            className="btn btn-ghost flex-1" 
             onClick={handlePull}
             disabled={isPulling || isPushing}
-            style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+            style={{ border: '1px solid var(--gold)', color: 'var(--gold)', whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px', minWidth: '140px' }}
           >
             {isPulling ? '⏳ ...' : t('profile_pull')}
           </button>

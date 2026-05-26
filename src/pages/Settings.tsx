@@ -523,11 +523,19 @@ export function Settings() {
           <div className="card mb-16">
             <h4 className="m-0 text-gold mb-4">{t('settings_contacts')}</h4>
             <div className="text-sm text-2 mb-16">{t('settings_contacts_desc')}</div>
-            <div className="grid-2">
-              <button className="btn btn-primary btn-sm" onClick={() => vcfInputRef.current?.click()}>
+            <div className="flex gap-12" style={{ flexWrap: 'wrap' }}>
+              <button 
+                className="btn btn-primary btn-sm flex-1" 
+                onClick={() => vcfInputRef.current?.click()}
+                style={{ whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px', minWidth: '140px' }}
+              >
                 {t('settings_import_vcf')}
               </button>
-              <button className="btn btn-ghost btn-sm" onClick={handleExportVCF}>
+              <button 
+                className="btn btn-ghost btn-sm flex-1" 
+                onClick={handleExportVCF}
+                style={{ whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px', minWidth: '140px' }}
+              >
                 {t('settings_export_vcf')}
               </button>
             </div>
@@ -538,7 +546,11 @@ export function Settings() {
           <div className="card mb-16">
             <h4 className="m-0 text-gold mb-4">{t('settings_gmap_export')}</h4>
             <div className="text-sm text-2 mb-16">{t('settings_gmap_desc')}</div>
-            <button className="btn btn-ghost w-full btn-sm flex-center gap-8" onClick={handleExportGMapCSV}>
+            <button 
+              className="btn btn-ghost w-full btn-sm flex-center gap-8" 
+              onClick={handleExportGMapCSV}
+              style={{ whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px' }}
+            >
               {t('settings_gmap_btn')}
             </button>
           </div>
@@ -567,11 +579,21 @@ export function Settings() {
             <div className="text-sm text-2 mb-16">
               {t('settings_backup_desc')}
             </div>
-            <div className="grid-2">
-              <button className="btn w-full flex-center" style={{ background: '#1890FF', color: '#fff' }} onClick={handleExportBackup} disabled={isExporting}>
+            <div className="flex gap-12" style={{ flexWrap: 'wrap' }}>
+              <button 
+                className="btn flex-1 flex-center" 
+                style={{ background: '#1890FF', color: '#fff', whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px', minWidth: '140px' }} 
+                onClick={handleExportBackup} 
+                disabled={isExporting}
+              >
                 {isExporting ? '...' : t('settings_export_zip')}
               </button>
-              <button className="btn btn-ghost w-full flex-center" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+              <button 
+                className="btn btn-ghost flex-1 flex-center" 
+                onClick={() => fileInputRef.current?.click()} 
+                disabled={isImporting}
+                style={{ whiteSpace: 'normal', height: 'auto', minHeight: '44px', padding: '8px 12px', minWidth: '140px' }}
+              >
                 {isImporting ? '...' : t('settings_import_zip')}
               </button>
               <input type="file" accept=".zip" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImportBackup} />
