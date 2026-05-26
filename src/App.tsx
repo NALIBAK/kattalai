@@ -98,7 +98,8 @@ function App() {
         }
       } catch (e: any) {
          if (e.message === 'AUTH_REQUIRED') {
-           setSyncPaused(true);
+           // Silently pause polling until token is refreshed, preventing annoying red banners
+           console.warn('[Google Auth] Background poll paused: session token expired.');
          } else {
            console.error('Cloud polling error:', e);
          }
@@ -111,6 +112,36 @@ function App() {
     const interval = setInterval(checkCloud, 60000); // Then every 60 seconds
     return () => clearInterval(interval);
   }, [gDriveLinked, user]);
+
+  // ── Seamless User Interaction Triggered Re-Auth Fallback ──
+  useEffect(() => {
+    if (!gDriveLinked || !user || !syncPaused) return;
+
+    const handleWindowClick = async () => {
+      try {
+        console.log('[Google Auth] Active interaction detected, performing quick OAuth flash-refresh...');
+        const token = await getGoogleAccessToken(false); // Quick interactive popup (auto-closes if already authorized)
+        setSyncPaused(false);
+        showToast('🔄 Google Drive Sync Reconnected!', 'success');
+        
+        // Immediately trigger pending sync
+        const time = await syncToGoogleDrive(true);
+        await setGDriveSetting('gDriveLastSync', time);
+        console.log('✅ Background sync caught up and pushed edits.');
+      } catch (err) {
+        console.warn('[Google Auth] Silent popup-flash refresh deferred:', err);
+      }
+    };
+
+    // Listen for next click or tap to silently re-acquire token
+    window.addEventListener('click', handleWindowClick, { once: true });
+    window.addEventListener('touchstart', handleWindowClick, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleWindowClick);
+      window.removeEventListener('touchstart', handleWindowClick);
+    };
+  }, [gDriveLinked, user, syncPaused, setGDriveSetting, showToast]);
 
   const handleCloudUpdate = async () => {
     setCloudUpdateAvailable(false);
@@ -243,30 +274,7 @@ function App() {
         </div>
       )}
 
-      {/* ── NEW: Sync Paused Banner ── */}
-      {syncPaused && (
-        <div style={{
-          background: 'var(--red)', color: '#fff', padding: '10px 16px',
-          textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
-          zIndex: 10000, position: 'relative'
-        }}>
-          <span>⚠️ Sync Paused (Session Expired)</span>
-          <button 
-            onClick={async () => {
-              try {
-                 await getGoogleAccessToken(false);
-                 setSyncPaused(false);
-              } catch (e) {}
-            }}
-            style={{ 
-              background: '#fff', color: 'var(--red)', border: 'none', 
-              padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 700 
-            }}>
-            Reconnect
-          </button>
-        </div>
-      )}
+
 
       <Routes>
         <Route path="/login" element={<Login />} />

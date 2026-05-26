@@ -118,6 +118,64 @@ export function Settings() {
     showToast(`Exported ${devotees.length} contacts as VCF`, 'success');
   };
 
+  const handleExportGMapCSV = () => {
+    const mapDevs = devotees.filter(d => d.location_lat && d.location_lng);
+    if (mapDevs.length === 0) {
+      showToast('No devotees with valid GPS tags to export', 'error');
+      return;
+    }
+
+    const csvHeaders = [
+      'Name',
+      'Phone',
+      'Address',
+      'City',
+      'Pincode',
+      'Gothram',
+      'Category',
+      'Annual Dues',
+      'Amount Paid',
+      'Pending Dues',
+      'Latitude',
+      'Longitude',
+      'Google Maps Link'
+    ];
+
+    const csvRows = mapDevs.map(d => {
+      const cat = categories.find(c => c.id === d.category);
+      const categoryName = cat ? cat.name : 'Uncategorized';
+      const pendingDues = Math.max(0, d.annual_amount - d.amount_paid);
+      const fullAddress = d.address ? d.address.replace(/"/g, '""') : '';
+      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${d.location_lat},${d.location_lng}`;
+
+      return [
+        `"${d.name.replace(/"/g, '""')}"`,
+        `"${d.phone}"`,
+        `"${fullAddress}"`,
+        `"${d.city.replace(/"/g, '""')}"`,
+        `"${d.pincode || ''}"`,
+        `"${(d.gothram || '').replace(/"/g, '""')}"`,
+        `"${categoryName}"`,
+        d.annual_amount,
+        d.amount_paid,
+        pendingDues,
+        d.location_lat,
+        d.location_lng,
+        `"${mapsLink}"`
+      ].join(',');
+    });
+
+    const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Kattalai_GMap_Import_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${mapDevs.length} devotee locations for Google Maps!`, 'success');
+  };
+
   // ── VCF Import ─────────────────────────────────────────────────
   const parseVCF = (text: string) => {
     // Split into individual vCard blocks
@@ -429,6 +487,15 @@ export function Settings() {
               </button>
             </div>
             <input type="file" accept=".vcf,text/vcard" ref={vcfInputRef} style={{ display: 'none' }} onChange={handleVCFFileChange} />
+          </div>
+
+          {/* ── Google My Maps CSV Export ── */}
+          <div className="card mb-16">
+            <h4 className="m-0 text-gold mb-4">🌍 Google My Maps Export</h4>
+            <div className="text-sm text-2 mb-16">Export devotee GPS coordinates and addresses as a CSV specifically formatted for one-click import into Google My Maps.</div>
+            <button className="btn btn-ghost w-full btn-sm flex-center gap-8" onClick={handleExportGMapCSV}>
+              🗺️ Export CSV for Google Maps
+            </button>
           </div>
 
           {/* ── Custom Categories ── */}

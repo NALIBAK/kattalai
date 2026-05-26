@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { getDB, PaymentEntry, Devotee } from '../db';
+import { useAuthStore } from '../store';
 
 /**
  * GOOGLE DRIVE SYNC UTILITY
@@ -22,8 +23,7 @@ let tokenExpiry: number = 0;
 
 /**
  * Requests an OAuth 2.0 access token using drive.appdata scope.
- * If silent = true, it throws 'AUTH_REQUIRED' if the token is not cached,
- * instead of opening a Google Sign-in popup.
+ * Attempts to silently refresh if silent = true, falling back to popup if required.
  */
 export async function getGoogleAccessToken(silent: boolean = false): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -45,16 +45,13 @@ export async function getGoogleAccessToken(silent: boolean = false): Promise<str
       }
     }
 
-    // 3. Token missing or expired. If silent, abort.
-    if (silent) {
-      return reject(new Error('AUTH_REQUIRED'));
+    // 3. Token missing or expired.
+    if (!(window as any).google) {
+      return reject(new Error('Google Identity Services not loaded.'));
     }
 
-    // 4. Not silent, trigger the interactive popup
-    if (!(window as any).google) {
-      reject(new Error('Google Identity Services not loaded.'));
-      return;
-    }
+    const userState = useAuthStore.getState();
+    const email = userState?.user?.email || '';
 
     const client = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
@@ -63,10 +60,10 @@ export async function getGoogleAccessToken(silent: boolean = false): Promise<str
       scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
       callback: (response: any) => {
         if (response.error || response.error_description) {
-          reject(new Error(response.error_description || response.error));
+          console.warn('[Google Auth] Silent/Interactive token request failed:', response.error, response.error_description);
+          reject(new Error('AUTH_REQUIRED'));
         } else {
           accessToken = response.access_token;
-          // Google tokens expire in 3600s; cache with expiry
           tokenExpiry = Date.now() + (response.expires_in ?? 3600) * 1000;
           
           localStorage.setItem('gdrive_token', accessToken!);
@@ -77,7 +74,17 @@ export async function getGoogleAccessToken(silent: boolean = false): Promise<str
       },
     });
 
-    client.requestAccessToken();
+    if (silent) {
+      if (email) {
+        // Attempt silent SSO token refresh without showing popups
+        client.requestAccessToken({ prompt: 'none', hint: email });
+      } else {
+        reject(new Error('AUTH_REQUIRED'));
+      }
+    } else {
+      // Interactive popup
+      client.requestAccessToken();
+    }
   });
 }
 

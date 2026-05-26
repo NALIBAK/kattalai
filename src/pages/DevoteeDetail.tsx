@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCategoryStore, useToastStore } from '../store';
 import { PlanGate } from '../components/PlanGate';
-import { getDevotee, deleteDevotee, Devotee, getSubscriptionStatus, getPaymentStatus } from '../db';
+import { getDevotee, deleteDevotee, Devotee, getSubscriptionStatus, getPaymentStatus, upsertDevotee } from '../db';
 import { allowPush } from '../utils/syncLock';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -29,6 +29,101 @@ export function DevoteeDetail() {
       else { showToast('Not found', 'error'); navigate('/devotees'); }
     });
   }, [id, navigate, showToast]);
+
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [searchAddress, setSearchAddress] = useState('');
+
+  const handleAutoLocate = async (customQuery?: string) => {
+    const queryStr = customQuery || `${devotee?.address}, ${devotee?.city}`;
+    if (!queryStr.trim()) {
+      showToast('No address to search', 'error');
+      return;
+    }
+    setIsLocating(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&limit=1`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const item = data[0];
+        const lat = parseFloat(item.lat);
+        const lng = parseFloat(item.lon);
+        
+        if (devotee) {
+          const updated = {
+            ...devotee,
+            location_lat: lat,
+            location_lng: lng,
+            location_accurate: false,
+            updated_at: new Date().toISOString()
+          };
+          await upsertDevotee(updated);
+          setDevotee(updated);
+          allowPush();
+          showToast('📍 Location tagged successfully!', 'success');
+          setIsEditingLocation(false);
+          setSearchAddress('');
+        }
+      } else {
+        showToast('Address not found. Try searching a custom location.', 'error');
+      }
+    } catch {
+      showToast('Network error during geocoding', 'error');
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleUseGPS = () => {
+    if (!navigator.geolocation) {
+      showToast('GPS not supported on this device', 'error');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        if (devotee) {
+          const updated = {
+            ...devotee,
+            location_lat: pos.coords.latitude,
+            location_longitude: undefined, // ensure deprecated legacy fields are cleared if any
+            location_lng: pos.coords.longitude,
+            location_accurate: true,
+            updated_at: new Date().toISOString()
+          };
+          await upsertDevotee(updated);
+          setDevotee(updated);
+          allowPush();
+          showToast('🎯 Accurate device GPS tagged!', 'success');
+          setIsLocating(false);
+          setIsEditingLocation(false);
+        }
+      },
+      (err) => {
+        showToast(`GPS Error: ${err.message}`, 'error');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const handleClearLocation = async () => {
+    if (!devotee) return;
+    if (window.confirm('Remove GPS coordinates from this devotee?')) {
+      const updated = {
+        ...devotee,
+        location_lat: undefined,
+        location_lng: undefined,
+        location_accurate: false,
+        updated_at: new Date().toISOString()
+      };
+      await upsertDevotee(updated);
+      setDevotee(updated);
+      allowPush();
+      showToast('GPS tag removed', 'info');
+      setIsEditingLocation(false);
+    }
+  };
 
   if (!devotee) return <div className="p-16">Loading...</div>;
 
@@ -138,12 +233,87 @@ export function DevoteeDetail() {
       {/* Location */}
       <PlanGate requiredPlan="pro" featureName="GPS Map & Navigation">
         <div className="card mb-32 p-0" style={{ overflow: 'hidden' }}>
-          <div className="p-16">
-            <h4 className="text-gold mb-8">Location & Navigation</h4>
-            <div className="text-sm text-2 mb-16">📍 {devotee.address}, {devotee.city}</div>
+          <div className="p-16 flex-between" style={{ flexWrap: 'nowrap' }}>
+            <div>
+              <h4 className="text-gold mb-4">Location & Navigation</h4>
+              <div className="text-sm text-2">📍 {devotee.address}, {devotee.city}</div>
+            </div>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              onClick={() => setIsEditingLocation(!isEditingLocation)}
+              title="Edit Location Coordinates"
+              style={{ flexShrink: 0 }}
+            >
+              {isEditingLocation ? 'Cancel' : '⚙️ Pin GPS'}
+            </button>
           </div>
           
-          {devotee.location_lat && devotee.location_lng ? (
+          {isEditingLocation ? (
+            <div className="p-16 pt-0 animate-fade-in">
+              <div className="card-flat" style={{ border: '1.5px solid var(--gold)' }}>
+                <h5 className="mb-8 text-gold">📍 Pin Devotee GPS Location</h5>
+                
+                {/* Auto Locate Address */}
+                <div className="mb-12">
+                  <div className="text-xs text-muted mb-4">Quick Auto-locate from profile address:</div>
+                  <button 
+                    className="btn btn-primary btn-sm w-full" 
+                    onClick={() => handleAutoLocate()} 
+                    disabled={isLocating}
+                  >
+                    {isLocating ? '🌐 Locating...' : '🌐 Auto-Locate Profile Address'}
+                  </button>
+                </div>
+                
+                <div className="divider" style={{ margin: '12px 0' }} />
+
+                {/* Custom Address Search */}
+                <div className="form-group mb-12">
+                  <label className="form-label">Search Custom Address / Landmark</label>
+                  <div className="flex gap-8">
+                    <input 
+                      type="text" 
+                      className="form-input flex-1" 
+                      placeholder="e.g. Chidambaram Natarajar Temple..." 
+                      value={searchAddress} 
+                      onChange={e => setSearchAddress(e.target.value)} 
+                    />
+                    <button 
+                      className="btn btn-primary btn-sm flex-center" 
+                      onClick={() => handleAutoLocate(searchAddress)} 
+                      disabled={isLocating || !searchAddress.trim()}
+                      style={{ padding: '0 12px' }}
+                    >
+                      🔍
+                    </button>
+                  </div>
+                </div>
+
+                <div className="divider" style={{ margin: '12px 0' }} />
+
+                {/* Manual Device GPS */}
+                <div className="grid-2">
+                  <button 
+                    className="btn btn-ghost btn-sm" 
+                    onClick={handleUseGPS}
+                    disabled={isLocating}
+                    style={{ border: '1.5px solid var(--gold)', color: 'var(--gold)' }}
+                  >
+                    📍 Tag Device GPS
+                  </button>
+                  
+                  {devotee.location_lat && (
+                    <button 
+                      className="btn btn-danger btn-sm" 
+                      onClick={handleClearLocation}
+                    >
+                      🗑️ Clear GPS Tag
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : devotee.location_lat && devotee.location_lng ? (
             <div>
               <div style={{ height: 200, width: '100%', background: 'var(--surface-2)' }}>
                 <MapContainer 
@@ -156,8 +326,8 @@ export function DevoteeDetail() {
                   <Marker position={[devotee.location_lat, devotee.location_lng]} />
                 </MapContainer>
               </div>
-              <div className="p-16" style={{ background: 'var(--surface-2)' }}>
-                <button className="btn btn-primary w-full" onClick={openGoogleMaps}>
+              <div className="p-16 flex gap-8" style={{ background: 'var(--surface-2)' }}>
+                <button className="btn btn-primary flex-1" onClick={openGoogleMaps}>
                   🧭 Navigate in Google Maps
                 </button>
               </div>
@@ -166,7 +336,33 @@ export function DevoteeDetail() {
             <div className="p-16 pt-0">
               <div className="empty-state p-16" style={{ border: '1px dashed var(--border)', borderRadius: 'var(--r-sm)' }}>
                 <div style={{ fontSize: '2rem' }}>📍</div>
-                <div className="text-sm">No GPS Location Set</div>
+                <div className="text-sm mb-16">No GPS Location Set</div>
+                
+                {/* Instant Quick-setup options directly on card */}
+                <div className="flex-col gap-8 w-full" style={{ maxWidth: '300px' }}>
+                  <button 
+                    className="btn btn-ghost btn-sm w-full" 
+                    onClick={() => handleAutoLocate()}
+                    disabled={isLocating}
+                  >
+                    {isLocating ? '🌐 Finding...' : '🌐 Auto-Locate from Address'}
+                  </button>
+                  <button 
+                    className="btn btn-ghost btn-sm w-full" 
+                    onClick={handleUseGPS}
+                    disabled={isLocating}
+                    style={{ border: '1px solid var(--gold)', color: 'var(--gold)' }}
+                  >
+                    📍 Tag Device GPS (Current)
+                  </button>
+                  <button 
+                    className="btn btn-sm w-full" 
+                    style={{ background: 'var(--surface-3)', border: '1px solid var(--border)' }}
+                    onClick={() => setIsEditingLocation(true)}
+                  >
+                    🔍 Search Custom Address
+                  </button>
+                </div>
               </div>
             </div>
           )}
