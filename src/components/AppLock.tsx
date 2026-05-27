@@ -4,7 +4,7 @@ import { signInWithGoogle, initGoogleAuth } from '../auth';
 import CryptoJS from 'crypto-js';
 
 export function AppLock() {
-  const { t } = useTranslation();
+  const { t } = useAppLockTranslation();
   const { showToast } = useToastStore();
   const { user } = useAuthStore();
   const { 
@@ -150,39 +150,7 @@ export function AppLock() {
     }
   };
 
-  // Helper translations hook inline fallback
-  function useTranslation() {
-    const language = useSettingsStore(state => state.language) || 'ta';
-    const dict = {
-      ta: {
-        lock_title: 'பாதுகாப்புப் பூட்டு',
-        lock_enter_pin: 'செயலியைத் திறக்க 4-இலக்க PIN-ஐ உள்ளிடவும்',
-        lock_biometric_prompt: 'கைரேகை அல்லது முக அடையாளத்தைப் பயன்படுத்தவும்',
-        lock_forgot_pin: 'PIN குறியீட்டை மறந்துவிட்டீர்களா?',
-        lock_recovery_title: 'PIN மீட்டமைப்பு',
-        lock_recovery_desc: 'பாதுகாப்பு காரணங்களுக்காக, உங்கள் பதிவுசெய்யப்பட்ட கூகுள் கணக்கை மீண்டும் சரிபார்ப்பதன் மூலம் உங்கள் PIN குறியீட்டை மீட்டமைக்கலாம். இது உங்கள் தரவைப் பாதிக்காது.',
-        lock_recovery_btn: '🔑 கூகுள் மூலம் சரிபார்',
-        save: 'சேமி',
-        cancel: 'ரத்துசெய்'
-      },
-      en: {
-        lock_title: 'App Security Lock',
-        lock_enter_pin: 'Enter 4-Digit PIN to Unlock',
-        lock_biometric_prompt: 'Use Biometrics',
-        lock_forgot_pin: 'Forgot PIN?',
-        lock_recovery_title: 'Reset PIN Lock',
-        lock_recovery_desc: 'For security, you must re-verify your Google Account to reset your PIN. This will not delete your devotee data.',
-        lock_recovery_btn: '🔑 Verify with Google',
-        save: 'Save',
-        cancel: 'Cancel'
-      }
-    };
-    const t = (key: 'lock_title' | 'lock_enter_pin' | 'lock_biometric_prompt' | 'lock_forgot_pin' | 'lock_recovery_title' | 'lock_recovery_desc' | 'lock_recovery_btn' | 'save' | 'cancel') => {
-      const langDict = dict[language] || dict.ta;
-      return langDict[key] || dict.ta[key] || key;
-    };
-    return { t };
-  }
+
 
   return (
     <>
@@ -263,8 +231,12 @@ export function AppLock() {
 
       {/* Recovery Modal Sheet */}
       {showRecoveryModal && (
-        <div className="sheet-overlay animate-fade-in" onClick={e => e.target === e.currentTarget && !isVerifying && setShowRecoveryModal(false)}>
-          <div className="sheet animate-slide-up" style={{ textAlign: 'center', zIndex: 100000 }}>
+        <div 
+          className="sheet-overlay animate-fade-in" 
+          style={{ zIndex: 1000000 }} 
+          onClick={e => e.target === e.currentTarget && !isVerifying && setShowRecoveryModal(false)}
+        >
+          <div className="sheet animate-slide-up" style={{ textAlign: 'center', zIndex: 1000001 }}>
             <div className="sheet-handle" />
             
             <h3 className="text-gold mb-12">{t('lock_recovery_title')}</h3>
@@ -302,4 +274,38 @@ export function AppLock() {
       )}
     </>
   );
+}
+
+// Helper translations hook inline fallback
+function useAppLockTranslation() {
+  const language = useSettingsStore(state => state.language) || 'ta';
+  const dict = {
+    ta: {
+      lock_title: 'பாதுகாப்புப் பூட்டு',
+      lock_enter_pin: 'செயலியைத் திறக்க 4-இலக்க PIN-ஐ உள்ளிடவும்',
+      lock_biometric_prompt: 'கைரேகை அல்லது முக அடையாளத்தைப் பயன்படுத்தவும்',
+      lock_forgot_pin: 'PIN குறியீட்டை மறந்துவிட்டீர்களா?',
+      lock_recovery_title: 'PIN மீட்டமைப்பு',
+      lock_recovery_desc: 'பாதுகாப்பு காரணங்களுக்காக, உங்கள் பதிவுசெய்யப்பட்ட கூகுள் கணக்கை மீண்டும் சரிபார்ப்பதன் மூலம் உங்கள் PIN குறியீட்டை மீட்டமைக்கலாம். இது உங்கள் தரவைப் பாதிக்காது.',
+      lock_recovery_btn: '🔑 கூகுள் மூலம் சரிபார்',
+      save: 'சேமி',
+      cancel: 'ரத்துசெய்'
+    },
+    en: {
+      lock_title: 'App Security Lock',
+      lock_enter_pin: 'Enter 4-Digit PIN to Unlock',
+      lock_biometric_prompt: 'Use Biometrics',
+      lock_forgot_pin: 'Forgot PIN?',
+      lock_recovery_title: 'Reset PIN Lock',
+      lock_recovery_desc: 'For security, you must re-verify your Google Account to reset your PIN. This will not delete your devotee data.',
+      lock_recovery_btn: '🔑 Verify with Google',
+      save: 'Save',
+      cancel: 'Cancel'
+    }
+  };
+  const t = (key: 'lock_title' | 'lock_enter_pin' | 'lock_biometric_prompt' | 'lock_forgot_pin' | 'lock_recovery_title' | 'lock_recovery_desc' | 'lock_recovery_btn' | 'save' | 'cancel') => {
+    const langDict = dict[language] || dict.ta;
+    return langDict[key] || dict.ta[key] || key;
+  };
+  return { t };
 }
