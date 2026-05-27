@@ -467,7 +467,7 @@ export function DevoteesList() {
                 <label className="form-label">{t('print_category')}</label>
                 <select className="form-input" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                   <option value="">{t('all_categories')}</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.filter(c => devotees.some(d => d.category === c.id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             </div>

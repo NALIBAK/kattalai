@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
-import { getDB, Devotee, PaymentEntry, MessageTemplate, upsertDevotee } from '../db';
+import { getDB, Devotee, PaymentEntry, upsertDevotee } from '../db';
 import { restoreFromBackupBlob } from '../utils/backup';
 import { allowPush } from '../utils/syncLock';
-import { PlanGate } from '../components/PlanGate';
 import JSZip from 'jszip';
 import { useTranslation } from '../utils/i18n';
 
@@ -16,9 +15,7 @@ export function Settings() {
   // Stores
   const { 
     theme, defaultAmount, language,
-    messageTemplates,
-    setTheme, setDefaultAmount, setLanguage,
-    addTemplate, updateTemplate, removeTemplate 
+    setTheme, setDefaultAmount, setLanguage
   } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
   const { categories, loadCategories } = useCategoryStore();
@@ -28,12 +25,6 @@ export function Settings() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const vcfInputRef = useRef<HTMLInputElement>(null);
-
-  // Template Editing state
-  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
-  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
-  const [tempLabel, setTempLabel] = useState('');
-  const [tempText, setTempText] = useState('');
 
   // VCF Import state
   interface ParsedContact {
@@ -52,46 +43,6 @@ export function Settings() {
   const [vcfCategory, setVcfCategory] = useState('');
   const [vcfModalOpen, setVcfModalOpen] = useState(false);
   const [vcfImporting, setVcfImporting] = useState(false);
-
-  // ── Template Handlers ──────────────────────────────────────────
-  const handleAddTemplate = async () => {
-    if (!tempLabel.trim() || !tempText.trim()) return;
-    await addTemplate(tempLabel.trim(), tempText.trim());
-    setIsAddingTemplate(false);
-    setTempLabel('');
-    setTempText('');
-    showToast(t('settings_tmpl_added'), 'success');
-  };
-
-  const handleUpdateTemplate = async () => {
-    if (!editingTemplate || !tempLabel.trim() || !tempText.trim()) return;
-    await updateTemplate({ ...editingTemplate, label: tempLabel.trim(), text: tempText.trim() });
-    setEditingTemplate(null);
-    setTempLabel('');
-    setTempText('');
-    showToast(t('settings_tmpl_updated'), 'success');
-  };
-
-  const handleRemoveTemplate = async (id: string) => {
-    if (window.confirm(t('settings_tmpl_confirm_delete'))) {
-      await removeTemplate(id);
-      showToast(t('settings_tmpl_deleted'), 'info');
-    }
-  };
-
-  const startEditTemplate = (t: MessageTemplate) => {
-    setEditingTemplate(t);
-    setTempLabel(t.label);
-    setTempText(t.text);
-    setIsAddingTemplate(false);
-  };
-
-  const startAddTemplate = () => {
-    setIsAddingTemplate(true);
-    setEditingTemplate(null);
-    setTempLabel('');
-    setTempText('');
-  };
 
   // ── VCF Export ─────────────────────────────────────────────────
   const handleExportVCF = () => {
@@ -471,53 +422,7 @@ export function Settings() {
             </div>
           </div>
 
-          {/* ── Message Templates Manager (Plus+) ── */}
-          <PlanGate requiredPlan="plus" featureName="Message Templates">
-          <div className="card mb-16">
-            <div className="flex-between mb-16">
-              <h4 className="text-gold m-0">{t('settings_templates')}</h4>
-              <button className="btn btn-primary btn-sm" onClick={startAddTemplate}>{t('settings_add_template')}</button>
-            </div>
 
-            <div className="flex-col gap-12">
-              {messageTemplates.map(t => (
-                <div key={t.id} className="card-flat" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                  <div className="flex-between mb-8">
-                    <div className="fw-700">{t.label}</div>
-                    <div className="flex gap-8">
-                      <button className="btn-icon btn-sm" onClick={() => startEditTemplate(t)}>✏️</button>
-                      <button className="btn-icon btn-sm" style={{ color: 'var(--red)' }} onClick={() => handleRemoveTemplate(t.id)}>🗑️</button>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted text-ellipsis-3">{t.text}</div>
-                </div>
-              ))}
-            </div>
-
-            {(isAddingTemplate || editingTemplate) && (
-              <div className="mt-24 p-16" style={{ background: 'var(--surface-3)', borderRadius: 12, border: '1.5px solid var(--gold)' }}>
-                <h5 className="mb-12">{isAddingTemplate ? t('settings_new_template') : t('settings_edit_template')}</h5>
-                <div className="form-group">
-                  <label className="form-label">{t('settings_tmpl_label')}</label>
-                  <input className="form-input" value={tempLabel} onChange={e => setTempLabel(e.target.value)} placeholder="e.g. Festival Wishes" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('settings_tmpl_text')}</label>
-                  <textarea className="form-input" rows={6} value={tempText} onChange={e => setTempText(e.target.value)} placeholder="Type your message..." />
-                  <div className="text-xs text-muted mt-4">
-                    {t('settings_tmpl_placeholders')} {`{name}, {city}, {nakshathiram}, {expiry_date}, {balance}`}
-                  </div>
-                </div>
-                <div className="grid-2">
-                  <button className="btn btn-ghost" onClick={() => { setIsAddingTemplate(false); setEditingTemplate(null); }}>{t('settings_tmpl_cancel')}</button>
-                  <button className="btn btn-primary" onClick={isAddingTemplate ? handleAddTemplate : handleUpdateTemplate} disabled={!tempLabel.trim() || !tempText.trim()}>
-                    {t('settings_tmpl_save')}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          </PlanGate>
 
           {/* ── VCF / Contacts Import & Export ── */}
           <div className="card mb-16">

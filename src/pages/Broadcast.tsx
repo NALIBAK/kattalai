@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { PlanGate } from '../components/PlanGate';
-import { useCategoryStore, useDevoteeStore, useSettingsStore } from '../store';
-import { getDB, generateId } from '../db';
+import { useCategoryStore, useDevoteeStore, useSettingsStore, useToastStore } from '../store';
+import { getDB, generateId, MessageTemplate } from '../db';
+import { useTranslation } from '../utils/i18n';
 
 interface BroadcastLog {
   id: string;
@@ -17,7 +18,14 @@ interface BroadcastLog {
 export function Broadcast() {
   const { categories } = useCategoryStore();
   const { devotees } = useDevoteeStore();
-  const { messageTemplates } = useSettingsStore();
+  const { 
+    messageTemplates,
+    addTemplate,
+    updateTemplate,
+    removeTemplate
+  } = useSettingsStore();
+  const { showToast } = useToastStore();
+  const { t } = useTranslation();
 
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -31,6 +39,51 @@ export function Broadcast() {
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [historyLog, setHistoryLog] = useState<BroadcastLog[]>([]);
   const [historyCategory, setHistoryCategory] = useState('');
+
+  // Template Manager State
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
+  const [tempLabel, setTempLabel] = useState('');
+  const [tempText, setTempText] = useState('');
+
+  const handleAddTemplate = async () => {
+    if (!tempLabel.trim() || !tempText.trim()) return;
+    await addTemplate(tempLabel.trim(), tempText.trim());
+    setIsAddingTemplate(false);
+    setTempLabel('');
+    setTempText('');
+    showToast(t('settings_tmpl_added') || 'Template added', 'success');
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate || !tempLabel.trim() || !tempText.trim()) return;
+    await updateTemplate({ ...editingTemplate, label: tempLabel.trim(), text: tempText.trim() });
+    setEditingTemplate(null);
+    setTempLabel('');
+    setTempText('');
+    showToast(t('settings_tmpl_updated') || 'Template updated', 'success');
+  };
+
+  const handleRemoveTemplate = async (id: string) => {
+    if (window.confirm(t('settings_tmpl_confirm_delete') || 'Are you sure you want to delete this template?')) {
+      await removeTemplate(id);
+      showToast(t('settings_tmpl_deleted') || 'Template deleted', 'info');
+    }
+  };
+
+  const startEditTemplate = (t: MessageTemplate) => {
+    setEditingTemplate(t);
+    setTempLabel(t.label);
+    setTempText(t.text);
+    setIsAddingTemplate(false);
+  };
+
+  const startAddTemplate = () => {
+    setIsAddingTemplate(true);
+    setEditingTemplate(null);
+    setTempLabel('');
+    setTempText('');
+  };
 
   const loadHistory = async () => {
     const db = await getDB();
@@ -138,7 +191,7 @@ export function Broadcast() {
                 <label className="form-label">1. Select Target Category</label>
                 <select className="form-input" value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
                   <option value="">-- Choose Category --</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.filter(c => devotees.some(d => d.category === c.id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 {selectedCategory && (
                   <div className="text-sm mt-8 text-gold fw-600">
@@ -216,6 +269,57 @@ export function Broadcast() {
               </button>
             </div>
 
+            {/* ── Message Templates Manager ── */}
+            <div className="card mb-24">
+              <div className="flex-between mb-16">
+                <h4 className="text-gold m-0">{t('settings_templates') || 'Message Templates'}</h4>
+                <button className="btn btn-primary btn-sm" onClick={startAddTemplate}>{t('settings_add_template') || '+ Add Template'}</button>
+              </div>
+
+              <div className="flex-col gap-12">
+                {messageTemplates.map(tmp => {
+                  const isBuiltIn = ['t1', 't2', 't3'].includes(tmp.id);
+                  return (
+                    <div key={tmp.id} className="card-flat" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                      <div className="flex-between mb-8">
+                        <div className="fw-700">{tmp.label} {isBuiltIn && <span className="badge badge-muted" style={{ fontSize: '0.7rem', padding: '2px 6px', marginLeft: 6 }}>System</span>}</div>
+                        <div className="flex gap-8">
+                          <button className="btn-icon btn-sm" onClick={() => startEditTemplate(tmp)}>✏️</button>
+                          {!isBuiltIn && (
+                            <button className="btn-icon btn-sm" style={{ color: 'var(--red)' }} onClick={() => handleRemoveTemplate(tmp.id)}>🗑️</button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted text-ellipsis-3" style={{ whiteSpace: 'pre-line' }}>{tmp.text}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(isAddingTemplate || editingTemplate) && (
+                <div className="mt-24 p-16" style={{ background: 'var(--surface-3)', borderRadius: 12, border: '1.5px solid var(--gold)' }}>
+                  <h5 className="mb-12">{isAddingTemplate ? (t('settings_new_template') || 'New Template') : (t('settings_edit_template') || 'Edit Template')}</h5>
+                  <div className="form-group">
+                    <label className="form-label">{t('settings_tmpl_label') || 'Template Name'}</label>
+                    <input className="form-input" value={tempLabel} onChange={e => setTempLabel(e.target.value)} placeholder="e.g. Festival Wishes" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('settings_tmpl_text') || 'Message Text'}</label>
+                    <textarea className="form-input" rows={6} value={tempText} onChange={e => setTempText(e.target.value)} placeholder="Type your message..." />
+                    <div className="text-xs text-muted mt-4">
+                      {t('settings_tmpl_placeholders') || 'Placeholders:'} {`{name}, {city}, {nakshathiram}, {expiry_date}, {balance}`}
+                    </div>
+                  </div>
+                  <div className="grid-2">
+                    <button className="btn btn-ghost" onClick={() => { setIsAddingTemplate(false); setEditingTemplate(null); }}>{t('settings_tmpl_cancel') || 'Cancel'}</button>
+                    <button className="btn btn-primary" onClick={isAddingTemplate ? handleAddTemplate : handleUpdateTemplate} disabled={!tempLabel.trim() || !tempText.trim()}>
+                      {t('settings_tmpl_save') || 'Save'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* ── Broadcast History ── */}
             <div className="mb-16">
               <div className="flex-between mb-12">
@@ -227,7 +331,7 @@ export function Broadcast() {
                   onChange={e => setHistoryCategory(e.target.value)}
                 >
                   <option value="">All Categories</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.filter(c => devotees.some(d => d.category === c.id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
