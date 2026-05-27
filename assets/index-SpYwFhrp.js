@@ -133,7 +133,7 @@ Thank you for your generous contribution to Kattalai. Your support helps continu
         @media print {
           @page {
             margin: 0;
-            size: ${o.mode===`envelope`?`162mm 114mm`:`A4`};
+            size: ${o.mode===`envelope`?`162mm 114mm landscape`:`A4 portrait`};
           }
           
           body { 
@@ -184,7 +184,7 @@ Thank you for your generous contribution to Kattalai. Your support helps continu
           .grid-3x5 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); }
 
           .mode-labels .print-card {
-            border: none;
+            border: 0.3mm dashed #bbb;
             page-break-inside: avoid;
             display: flex;
             flex-direction: column;
