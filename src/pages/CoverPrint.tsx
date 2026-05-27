@@ -27,18 +27,40 @@ export function CoverPrint() {
   const { t } = useTranslation();
 
   const [filterCategory, setFilterCategory] = useState('');
-  const [settings, setSettings] = useState<PrintSettings>({
-    mode: 'envelope',
-    grid: '2x5',
-    marginTop: 10,
-    marginBottom: 10,
-    marginLeft: 15,
-    marginRight: 10,
-    textColor: '#000000',
-    isBold: true,
-    baseFontSize: 16,
-    isSpeedPost: false,
+  const [savedMessage, setSavedMessage] = useState(false);
+
+  const [settings, setSettings] = useState<PrintSettings>(() => {
+    try {
+      const saved = localStorage.getItem('kattalai_print_settings');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Error loading print settings:', e);
+    }
+    return {
+      mode: 'envelope',
+      grid: '2x5',
+      marginTop: 10,
+      marginBottom: 10,
+      marginLeft: 15,
+      marginRight: 10,
+      textColor: '#000000',
+      isBold: true,
+      baseFontSize: 16,
+      isSpeedPost: false,
+    };
   });
+
+  const handleSaveSettings = () => {
+    try {
+      localStorage.setItem('kattalai_print_settings', JSON.stringify(settings));
+      setSavedMessage(true);
+      setTimeout(() => setSavedMessage(false), 2000);
+    } catch (e) {
+      console.error('Error saving print settings:', e);
+    }
+  };
 
   const filtered = useMemo(() => {
     return devotees.filter(d => !filterCategory || d.category === filterCategory);
@@ -97,6 +119,24 @@ export function CoverPrint() {
       } else if (totalChars > 120) {
         size *= 0.85;
       }
+
+      // STRICT MATHEMATICAL vertical clamp (1mm = 2.8346 pt)
+      const innerHeight = Math.max(114 - settings.marginTop - settings.marginBottom, 20) * 2.8346;
+      const innerWidth = Math.max(162 - settings.marginLeft - settings.marginRight, 40) * 2.8346;
+      
+      const charWidth = size * 0.48;
+      const maxCharsPerLine = Math.max(Math.floor(innerWidth / charWidth), 10);
+      const nameLines = Math.ceil(devotee.name.length / (maxCharsPerLine * 0.8));
+      const addressLines = Math.ceil(devotee.address.length / maxCharsPerLine);
+      const phoneLines = devotee.phone ? 1 : 0;
+      
+      const totalLineEquivalent = nameLines * 1.2 + addressLines * 1.35 + phoneLines * 1.2;
+      const estimatedHeight = totalLineEquivalent * size;
+
+      if (estimatedHeight > innerHeight) {
+        const shrinkFactor = innerHeight / estimatedHeight;
+        size *= shrinkFactor;
+      }
     } else {
       // settings.mode === 'labels' (A4 Label Mode)
       // Scale down based on Grid type since A4 labels are smaller than C6 envelopes
@@ -139,6 +179,27 @@ export function CoverPrint() {
     if (maxLineLength > 45) size = 7.5;
     else if (maxLineLength > 35) size = 9;
     else if (maxLineLength > 25) size = 10.5;
+
+    // Apply strict margin vertical scaling in envelope mode
+    if (settings.mode === 'envelope') {
+      const innerHeight = Math.max(114 - settings.marginTop - settings.marginBottom, 20) * 2.8346;
+      const innerWidth = Math.max(162 * 0.7 - settings.marginLeft - 4, 30) * 2.8346;
+      
+      const charWidth = size * 0.48;
+      const maxCharsPerLine = Math.max(Math.floor(innerWidth / charWidth), 10);
+      const nameLines = Math.ceil(devotee.name.length / (maxCharsPerLine * 0.8));
+      const addressLines = Math.ceil(devotee.address.length / maxCharsPerLine);
+      const phoneLines = devotee.phone ? 1 : 0;
+      
+      const totalLineEquivalent = nameLines * 1.2 + addressLines * 1.35 + phoneLines * 1.2;
+      const estimatedHeight = totalLineEquivalent * size;
+
+      if (estimatedHeight > innerHeight) {
+        const shrinkFactor = innerHeight / estimatedHeight;
+        size *= shrinkFactor;
+      }
+    }
+
     return `${Math.max(size, 7)}pt`;
   };
 
@@ -146,14 +207,45 @@ export function CoverPrint() {
     <div className="page-content">
       {/* ── Settings Sidebar ── */}
       <div className="no-print">
-        <div className="section flex-between mb-16">
+        <div className="section flex-between mb-16 gap-8" style={{ flexWrap: 'wrap' }}>
           <h2 className="mb-0">{t('print_title')}</h2>
-          <button className="btn btn-primary btn-sm" onClick={handlePrint}>
-            {t('print_btn')}
-          </button>
+          <div className="flex gap-8">
+            <button 
+              className={`btn btn-sm ${savedMessage ? 'btn-success' : 'btn-ghost'}`} 
+              onClick={handleSaveSettings}
+              style={{ borderColor: 'var(--gold)', color: savedMessage ? '#fff' : 'var(--gold)' }}
+            >
+              {savedMessage ? '✓ Saved' : 'Save Settings'}
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={handlePrint}>
+              {t('print_btn')}
+            </button>
+          </div>
         </div>
 
-
+        {/* ── Premium Printing Guidelines Banner ── */}
+        <div className="card mb-16" style={{
+          background: 'rgba(212, 175, 55, 0.08)',
+          border: '1px solid rgba(212, 175, 55, 0.25)',
+          padding: '12px 16px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start'
+        }}>
+          <span style={{ fontSize: '18px', marginTop: 1 }}>💡</span>
+          <div>
+            <h5 className="mb-4 text-gold" style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>HOW TO SAVE PERFECT PDFs & PRINTS:</h5>
+            <p className="mb-0 text-sm" style={{ opacity: 0.9, lineHeight: 1.4, fontSize: '12px' }}>
+              In your browser's Print dialog, configure these settings:
+              <br />
+              • <strong>Margins</strong>: set to <strong>"None"</strong> (so custom borders and margins align correctly)
+              <br />
+              • <strong>Scale</strong>: set to <strong>"100%"</strong> (do not use "Fit to Page")
+              <br />
+              • <strong>Background Graphics</strong>: check the box (required for QR codes and background fills)
+            </p>
+          </div>
+        </div>
 
         <div className="card mb-16">
           <h4 className="text-gold mb-12">{t('print_settings')}</h4>
