@@ -36,7 +36,6 @@ import { SubscriptionExpired } from './pages/SubscriptionExpired';
 import { verifyAccess } from './auth';
 import { clearAuthCache } from './db';
 import { useToastStore } from './store';
-import { SecurityGuard } from './components/SecurityGuard';
 
 function App() {
   const { setCache, setLoading, plan, user } = useAuthStore();
@@ -258,83 +257,81 @@ function App() {
 
   return (
     <BrowserRouter basename="/kattalai">
-      <SecurityGuard>
-        {/* ── Cloud Update Banner (Conflict Resolver) ── */}
-        {cloudUpdateAvailable && !syncPaused && (
-          <div style={{
-            background: 'var(--gold)', color: '#000', padding: '16px',
-            textAlign: 'center', fontWeight: 600, fontSize: '0.9rem',
-            zIndex: 10000, position: 'relative'
-          }}>
-            <div style={{ marginBottom: '12px' }}>
-              ☁️ Cloud has a different version
-            </div>
-            <div style={{ marginBottom: '12px', fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.5 }}>
-              📱 <b>This device:</b> {devotees.length} devotees
-              <br/>
-              ☁️ <b>Cloud:</b> {cloudDevoteeCount !== null ? `${cloudDevoteeCount} devotees` : 'unknown count'}
-            </div>
-            <div className="flex-center gap-12 text-sm">
-               <button 
-                  onClick={handleCloudUpdate}
-                  style={{ background: '#000', color: 'var(--gold)', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
-               >
-                  ☁️ Use Cloud ({cloudDevoteeCount ?? '?'})
-               </button>
-               <button 
-                  onClick={async () => {
-                     setCloudUpdateAvailable(false);
-                     showToast('Pushing local data to cloud...', 'info');
-                      try {
-                        const time = await syncToGoogleDrive(false);
-                        await setGDriveSetting('gDriveLastSync', time);
-                      } catch {
-                        // Suppress error if sync is blocked/deferred on user action
-                      }
-                  }}
-                  style={{ background: 'transparent', color: '#000', border: '1px solid #000', padding: '7px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
-               >
-                  📱 Use Local ({devotees.length})
-               </button>
-            </div>
+      {/* ── Cloud Update Banner (Conflict Resolver) ── */}
+      {cloudUpdateAvailable && !syncPaused && (
+        <div style={{
+          background: 'var(--gold)', color: '#000', padding: '16px',
+          textAlign: 'center', fontWeight: 600, fontSize: '0.9rem',
+          zIndex: 10000, position: 'relative'
+        }}>
+          <div style={{ marginBottom: '12px' }}>
+            ☁️ Cloud has a different version
           </div>
-        )}
+          <div style={{ marginBottom: '12px', fontSize: '0.82rem', fontWeight: 400, lineHeight: 1.5 }}>
+            📱 <b>This device:</b> {devotees.length} devotees
+            <br/>
+            ☁️ <b>Cloud:</b> {cloudDevoteeCount !== null ? `${cloudDevoteeCount} devotees` : 'unknown count'}
+          </div>
+          <div className="flex-center gap-12 text-sm">
+             <button 
+                onClick={handleCloudUpdate}
+                style={{ background: '#000', color: 'var(--gold)', border: 'none', padding: '8px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+             >
+                ☁️ Use Cloud ({cloudDevoteeCount ?? '?'})
+             </button>
+             <button 
+                onClick={async () => {
+                   setCloudUpdateAvailable(false);
+                   showToast('Pushing local data to cloud...', 'info');
+                    try {
+                      const time = await syncToGoogleDrive(false);
+                      await setGDriveSetting('gDriveLastSync', time);
+                    } catch {
+                      // Suppress error if sync is blocked/deferred on user action
+                    }
+                }}
+                style={{ background: 'transparent', color: '#000', border: '1px solid #000', padding: '7px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}
+             >
+                📱 Use Local ({devotees.length})
+             </button>
+          </div>
+        </div>
+      )}
 
 
 
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/pending" element={<PendingApproval />} />
-          <Route path="/expired" element={<SubscriptionExpired />} />
-          <Route path="/contact" element={<ContactDeveloper />} />
-          
-          {/* Protected app routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<GDriveGate><AppLayout /></GDriveGate>}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/devotees" element={<DevoteesList />} />
-              <Route path="/map" element={<MapHub />} />
-              <Route path="/vasool" element={<Vasool />} />
-              <Route path="/devotees/new" element={<DevoteeForm />} />
-              <Route path="/devotees/:id" element={<DevoteeDetail />} />
-              <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
-              <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
-              <Route path="/broadcast" element={<Broadcast />} />
-              <Route path="/cover-print" element={<CoverPrint />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/settings/categories" element={<ManageCategories />} />
-              <Route path="/settings/recycle-bin" element={<RecycleBin />} />
-              <Route path="/bulk-import" element={<BulkImport />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/finance" element={<FinanceStats />} />
-              <Route path="/upgrade" element={<UpgradePlan />} />
-              <Route path="/about" element={<AboutApp />} />
-            </Route>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/pending" element={<PendingApproval />} />
+        <Route path="/expired" element={<SubscriptionExpired />} />
+        <Route path="/contact" element={<ContactDeveloper />} />
+        
+        {/* Protected app routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<GDriveGate><AppLayout /></GDriveGate>}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/devotees" element={<DevoteesList />} />
+            <Route path="/map" element={<MapHub />} />
+            <Route path="/vasool" element={<Vasool />} />
+            <Route path="/devotees/new" element={<DevoteeForm />} />
+            <Route path="/devotees/:id" element={<DevoteeDetail />} />
+            <Route path="/devotees/:id/edit" element={<DevoteeForm />} />
+            <Route path="/devotees/:id/payments" element={<DevoteePayments />} />
+            <Route path="/broadcast" element={<Broadcast />} />
+            <Route path="/cover-print" element={<CoverPrint />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/categories" element={<ManageCategories />} />
+            <Route path="/settings/recycle-bin" element={<RecycleBin />} />
+            <Route path="/bulk-import" element={<BulkImport />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/finance" element={<FinanceStats />} />
+            <Route path="/upgrade" element={<UpgradePlan />} />
+            <Route path="/about" element={<AboutApp />} />
           </Route>
-        </Routes>
-        <ToastContainer />
-        {isLocked && <AppLock />}
-      </SecurityGuard>
+        </Route>
+      </Routes>
+      <ToastContainer />
+      {isLocked && <AppLock />}
     </BrowserRouter>
   );
 }
