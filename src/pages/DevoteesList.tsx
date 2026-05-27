@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useToastStore } from '../store';
-import { getSubscriptionStatus, getPaymentStatus, deleteDevotee } from '../db';
+import { getSubscriptionStatus, getPaymentStatus, deleteDevotee, upsertDevotee } from '../db';
 import type { Devotee } from '../db';
 import { allowPush } from '../utils/syncLock';
 import { useTranslation } from '../utils/i18n';
@@ -25,6 +25,25 @@ export function DevoteesList() {
     if (next.has(catId)) next.delete(catId);
     else next.add(catId);
     setExpandedCategoryIds(next);
+  };
+
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const wasLongPress = useRef(false);
+
+  const handlePressStart = () => {
+    if (isSelectMode) return;
+    wasLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      setIsSelectMode(true);
+      wasLongPress.current = true;
+    }, 600);
+  };
+
+  const handlePressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
   };
 
   useEffect(() => {
@@ -149,7 +168,37 @@ export function DevoteesList() {
     const isTa = t('save') === 'சேமி';
     
     return (
-      <div key={id} className="mb-16">
+      <div key={id} className="mb-16"
+        onDragOver={(e) => {
+          if (!isSelectMode || selectedIds.size === 0 || id === 'ALL') return;
+          e.preventDefault(); // Allows drop
+        }}
+        onDrop={async (e) => {
+          e.preventDefault();
+          if (!isSelectMode || selectedIds.size === 0 || id === 'ALL') return;
+          
+          const targetCategoryId = id === 'UNCATEGORIZED' ? '' : id;
+          
+          const confirmMsg = isTa
+            ? `தேர்ந்தெடுக்கப்பட்ட ${selectedIds.size} பக்தர்களை '${title}' பிரிவிற்கு மாற்ற விரும்புகிறீர்களா?`
+            : `Move ${selectedIds.size} devotees to '${title}'?`;
+            
+          if (!window.confirm(confirmMsg)) return;
+          
+          for (const devId of Array.from(selectedIds)) {
+            const dev = devotees.find(d => d.id === devId);
+            if (dev) {
+              await upsertDevotee({ ...dev, category: targetCategoryId });
+            }
+          }
+          
+          showToast(isTa ? 'பிரிவு மாற்றப்பட்டது' : 'Category updated', 'success');
+          allowPush();
+          setIsSelectMode(false);
+          setSelectedIds(new Set());
+          load();
+        }}
+      >
         {/* Category Header Card (Chapter style) */}
         <div 
           onClick={() => toggleCategory(id)}
@@ -202,7 +251,22 @@ export function DevoteesList() {
                 const isPending = devotee.annual_amount > devotee.amount_paid;
                 
                 return (
-                  <div key={devotee.id} className="devotee-card" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingRight: isSelectMode ? 12 : 0 }} onClick={() => {
+                  <div key={devotee.id} className="devotee-card" 
+                    draggable={isSelectMode && selectedIds.has(devotee.id)}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', 'devotees');
+                    }}
+                    onMouseDown={handlePressStart}
+                    onMouseUp={handlePressEnd}
+                    onMouseLeave={handlePressEnd}
+                    onTouchStart={handlePressStart}
+                    onTouchEnd={handlePressEnd}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, paddingRight: isSelectMode ? 12 : 0, cursor: isSelectMode ? (selectedIds.has(devotee.id) ? 'grab' : 'pointer') : 'pointer' }} 
+                    onClick={() => {
+                      if (wasLongPress.current) {
+                        wasLongPress.current = false;
+                        return;
+                      }
                       if (isSelectMode) {
                         toggleSelection(devotee.id);
                       } else {
@@ -259,13 +323,20 @@ export function DevoteesList() {
       <div className="flex-between mb-16" style={{ flexWrap: 'wrap', gap: '12px' }}>
         <h2 className="mb-0">{t('nav_devotees')} ({filtered.length})</h2>
         <div className="flex gap-8" style={{ flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => {
-              setIsSelectMode(!isSelectMode);
-              if (isSelectMode) setSelectedIds(new Set());
-            }}
-            style={{ color: isSelectMode ? 'var(--gold)' : 'var(--text)', borderColor: isSelectMode ? 'var(--gold)' : 'transparent', padding: '0 8px' }}>
-            {isSelectMode ? t('cancel') : `✓ ${t('select')}`}
-          </button>
+          {isSelectMode ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => {
+                setIsSelectMode(false);
+                setSelectedIds(new Set());
+              }}
+              style={{ color: 'var(--gold)', borderColor: 'var(--gold)', padding: '0 8px' }}>
+              {t('cancel')}
+            </button>
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/settings/categories')}
+              style={{ color: 'var(--text)', padding: '0 8px' }}>
+              📁 {t('save') === 'சேமி' ? 'பிரிவுகள்' : 'Categories'}
+            </button>
+          )}
           {!isSelectMode && (
             <>
               <button className="btn btn-ghost btn-sm" onClick={() => navigate('/bulk-import')}
