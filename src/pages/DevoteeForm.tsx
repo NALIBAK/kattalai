@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useDevoteeStore, useCategoryStore, useSettingsStore, useToastStore } from '../store';
+import { useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { PlanGate } from '../components/PlanGate';
 import { OcrReviewModal, OcrResult } from '../components/OcrReviewModal';
 import { getDevotee, upsertDevotee, generateId, Devotee } from '../db';
@@ -36,12 +36,9 @@ const COUNTRY_CODES = [
 export function DevoteeForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { refresh, devotees } = useDevoteeStore();
+  const { refresh } = useDevoteeStore();
   const { categories } = useCategoryStore();
-  const { defaultAmount } = useSettingsStore();
   const { showToast } = useToastStore();
-  
-  const dynamicCities = Array.from(new Set(devotees.map(d => d.city).filter(Boolean).sort()));
   
   const isEdit = Boolean(id);
   const isIndia = (cc: string) => cc === '+91';
@@ -57,7 +54,7 @@ export function DevoteeForm() {
     city: '',
     gothram: '',
     category: categories[0]?.id || '',
-    annual_amount: defaultAmount,
+    annual_amount: 0,
     amount_paid: 0,
     prasadham_count: 1,
     prasadham_override: false,
@@ -69,17 +66,9 @@ export function DevoteeForm() {
     gmap_link: '',
   });
 
-  // Safe side-effect date initialization for new devotees
+  // Dates stay empty by default to hide subscription details unless user enters them
   useEffect(() => {
-    if (!isEdit) {
-      Promise.resolve().then(() => {
-        setFormData(prev => ({
-          ...prev,
-          subscription_start: prev.subscription_start || new Date().toISOString().split('T')[0],
-          subscription_end: prev.subscription_end || new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
-        }));
-      });
-    }
+    // No auto-initialization of dates
   }, [isEdit]);
 
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -87,10 +76,6 @@ export function DevoteeForm() {
   const [scanStep, setScanStep] = useState<'idle'|'preprocessing'|'recognizing'|'done'>('idle');
   const [ocrReview, setOcrReview] = useState<OcrResult | null>(null);
   const [ocrPreviewUrl, setOcrPreviewUrl] = useState<string>('');
-  const [pincodeQuery, setPincodeQuery] = useState('');
-  const [pincodeSuggestions, setPincodeSuggestions] = useState<{ code: string; city: string; state: string }[]>([]);
-  const [showPincodeDrop, setShowPincodeDrop] = useState(false);
-  const pincodeRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -98,7 +83,6 @@ export function DevoteeForm() {
       getDevotee(id).then(d => {
         if (d) {
           setFormData(d);
-          setPincodeQuery(d.pincode || '');
         } else {
           showToast('Devotee not found', 'error');
           navigate('/devotees');
@@ -107,39 +91,8 @@ export function DevoteeForm() {
     }
   }, [id, isEdit, navigate, showToast]);
 
-  // Close pincode dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (pincodeRef.current && !pincodeRef.current.contains(e.target as Node)) {
-        setShowPincodeDrop(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   const handleChange = <K extends keyof Devotee>(field: K, value: Partial<Devotee>[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handlePincodeInput = (val: string) => {
-    setPincodeQuery(val);
-    handleChange('pincode', val);
-    if (isIndia(formData.country_code || '+91') && val.length >= 2) {
-      const results = searchPincodes(val);
-      setPincodeSuggestions(results);
-      setShowPincodeDrop(results.length > 0);
-    } else {
-      setShowPincodeDrop(false);
-    }
-  };
-
-  const selectPincode = (entry: { code: string; city: string; state: string }) => {
-    setPincodeQuery(entry.code);
-    handleChange('pincode', entry.code);
-    // Auto-fill city from geodata (always helpful)
-    handleChange('city', entry.city);
-    setShowPincodeDrop(false);
   };
 
   const handleGeocode = async (customAddress?: string, customCity?: string) => {
@@ -171,9 +124,6 @@ export function DevoteeForm() {
           location_lng: parseFloat(result.lon),
           location_accurate: false,
         }));
-        
-        if (foundPincode) setPincodeQuery(foundPincode);
-        
         showToast('Address verified and location found!', 'success');
         return result;
       } else {
@@ -323,8 +273,6 @@ export function DevoteeForm() {
       city:    edited.city    || prev.city,
     }));
 
-    if (edited.pincode) setPincodeQuery(edited.pincode);
-
     // Clean up preview URL
     if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl);
     setOcrPreviewUrl('');
@@ -410,9 +358,42 @@ export function DevoteeForm() {
     }
 
     const devId = isEdit ? id! : generateId();
+
+    // Auto-parse city and pincode from the single Address box if possible
+    let parsedPincode = formData.pincode || '';
+    let parsedCity = formData.city || '';
+
+    if (formData.address) {
+      const pinMatch = formData.address.match(/\b\d{6}\b/);
+      if (pinMatch) {
+        parsedPincode = pinMatch[0];
+        const suggestions = searchPincodes(parsedPincode);
+        if (suggestions.length > 0) {
+          parsedCity = suggestions[0].city;
+        }
+      }
+
+      if (!parsedCity) {
+        const parts = formData.address.split(',').map(p => p.trim());
+        if (parts.length > 1) {
+          const candidate = parts[parts.length - 1].replace(/\b\d{6}\b/g, '').trim();
+          if (candidate && candidate.length > 2 && candidate.length < 25) {
+            parsedCity = candidate;
+          } else if (parts.length > 2) {
+            const subCandidate = parts[parts.length - 2].trim();
+            if (subCandidate && subCandidate.length > 2 && subCandidate.length < 25) {
+              parsedCity = subCandidate;
+            }
+          }
+        }
+      }
+    }
+
     const newDevotee: Devotee = {
       ...formData as Devotee,
       id: devId,
+      city: parsedCity,
+      pincode: parsedPincode,
       country_code: formData.country_code || '+91',
       created_at: isEdit ? formData.created_at! : new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -545,62 +526,11 @@ export function DevoteeForm() {
       <div className="card mb-16">
         <h4 className="mb-16 text-gold">2. Address & Location</h4>
         <div className="form-group">
-          <label className="form-label">City</label>
-          <input 
-            className="form-input" 
-            value={formData.city} 
-            onChange={e => handleChange('city', e.target.value)} 
-            placeholder="e.g. Chidambaram"
-            list="city-suggestions"
-          />
-          <datalist id="city-suggestions">
-            {dynamicCities.map(c => <option key={c} value={c} />)}
-          </datalist>
-        </div>
-
-        {/* Pincode field */}
-        <div className="form-group" ref={pincodeRef} style={{ position: 'relative' }}>
-          <label className="form-label">
-            Pincode / ZIP Code
-            {india && <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>India — searchable</span>}
-            {!india && <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 6, fontSize: '0.8rem' }}>Optional</span>}
-          </label>
-          <input
-            className="form-input"
-            value={pincodeQuery}
-            onChange={e => handlePincodeInput(e.target.value)}
-            onFocus={() => { if (pincodeSuggestions.length > 0) setShowPincodeDrop(true); }}
-            placeholder={india ? 'Search by pincode or city...' : 'Enter postal/ZIP code (optional)'}
-            autoComplete="off"
-          />
-          {showPincodeDrop && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              borderRadius: 8, maxHeight: 220, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-            }}>
-              {pincodeSuggestions.map(s => (
-                <div
-                  key={s.code}
-                  onMouseDown={() => selectPincode(s)}
-                  style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span className="fw-600">{s.code}</span>
-                  <span className="text-sm text-2">{s.city}, {s.state}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="form-group">
           <div className="flex-between mb-8">
-            <label className="form-label mb-0">Street Address</label>
+            <label className="form-label mb-0">Full Address</label>
             {formData.address && (
               <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formData.address + ' ' + (formData.city || ''))}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formData.address)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-gold"
@@ -610,7 +540,16 @@ export function DevoteeForm() {
               </a>
             )}
           </div>
-          <textarea className="form-input" value={formData.address} onChange={e => handleChange('address', e.target.value)} placeholder="e.g. 12 Car Street..." rows={2} />
+          <textarea 
+            className="form-input" 
+            value={formData.address} 
+            onChange={e => handleChange('address', e.target.value)} 
+            placeholder="e.g. 12 Car Street, Chidambaram, 608001" 
+            rows={3} 
+          />
+          <div className="text-xs text-muted mt-4">
+            💡 Please include city and pincode in the address box. The system will auto-detect them for search and filtering.
+          </div>
         </div>
 
         <div className="form-group">

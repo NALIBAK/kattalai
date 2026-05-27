@@ -377,14 +377,17 @@ export function generateId(prefix = 'DEV'): string {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
 }
 
-export function getPaymentStatus(devotee: Devotee): 'paid' | 'partial' | 'unpaid' {
+export function getPaymentStatus(devotee: Devotee): 'paid' | 'partial' | 'unpaid' | 'none' {
+  if (!devotee.annual_amount && !devotee.amount_paid) return 'none';
   if (devotee.amount_paid >= devotee.annual_amount) return 'paid';
   if (devotee.amount_paid > 0) return 'partial';
   return 'unpaid';
 }
 
-export function getSubscriptionStatus(devotee: Devotee): 'active' | 'expiring' | 'expired' {
+export function getSubscriptionStatus(devotee: Devotee): 'active' | 'expiring' | 'expired' | 'none' {
+  if (!devotee.subscription_end) return 'none';
   const end = new Date(devotee.subscription_end);
+  if (isNaN(end.getTime())) return 'none';
   const now = new Date();
   const days = Math.ceil((end.getTime() - now.getTime()) / 86400000);
   if (days < 0) return 'expired';

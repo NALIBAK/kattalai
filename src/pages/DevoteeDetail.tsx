@@ -208,27 +208,29 @@ export function DevoteeDetail() {
       </div>
 
       {/* Financial info */}
-      <div className="card mb-16">
-        <div className="flex-between mb-16">
-          <h4 className="text-gold">Subscription Details</h4>
-          <span className="text-2 text-sm">{devotee.subscription_start.slice(0,10)} to {devotee.subscription_end.slice(0,10)}</span>
+      {devotee.annual_amount > 0 && devotee.subscription_end && (
+        <div className="card mb-16">
+          <div className="flex-between mb-16">
+            <h4 className="text-gold">Subscription Details</h4>
+            <span className="text-2 text-sm">{(devotee.subscription_start || '').slice(0,10)} to {(devotee.subscription_end || '').slice(0,10)}</span>
+          </div>
+          <div className="grid-3 mb-16">
+            <div>
+              <div className="text-xs text-muted">Annual</div>
+              <div className="fw-600">₹{devotee.annual_amount}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted">Paid</div>
+              <div className="fw-600 text-green">₹{devotee.amount_paid}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted">Pending</div>
+              <div className="fw-600 text-red">₹{Math.max(0, devotee.annual_amount - devotee.amount_paid)}</div>
+            </div>
+          </div>
+          <button className="btn btn-ghost w-full btn-sm" onClick={() => navigate(`/devotees/${id}/payments`)}>💳 View Payment History</button>
         </div>
-        <div className="grid-3 mb-16">
-          <div>
-            <div className="text-xs text-muted">Annual</div>
-            <div className="fw-600">₹{devotee.annual_amount}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted">Paid</div>
-            <div className="fw-600 text-green">₹{devotee.amount_paid}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted">Pending</div>
-            <div className="fw-600 text-red">₹{Math.max(0, devotee.annual_amount - devotee.amount_paid)}</div>
-          </div>
-        </div>
-        <button className="btn btn-ghost w-full btn-sm" onClick={() => navigate(`/devotees/${id}/payments`)}>💳 View Payment History</button>
-      </div>
+      )}
 
       {/* Location */}
       <PlanGate requiredPlan="pro" featureName="GPS Map & Navigation">
