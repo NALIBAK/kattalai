@@ -91,10 +91,6 @@ export function CoverPrint() {
   }, [devotees, filterCategory]);
 
   const handlePrint = () => {
-    if (settings.isSpeedPost && !templeAddress) {
-      alert('Please set your Sender Return Address (FROM) in your Profile first!');
-      return;
-    }
     window.print();
   };
 
@@ -124,10 +120,15 @@ export function CoverPrint() {
     return `SP${baseNum}${checkDigit}IN`;
   };
 
-  // QR Payload creator
-  const getQRPayload = (devotee: Devotee, index: number) => {
-    const tracking = getMockTrackingNumber(index);
-    return `SPEED POST\nTRACKING: ${tracking}\nFROM:\n${templeAddress}\n\nTO:\n${devotee.name}\n${devotee.address}\n${devotee.city} - ${devotee.pincode || ''}\nPhone: ${devotee.phone}`;
+  // QR Payload: embeds FROM (temple) + TO (devotee) for postal scanning
+  const getQRPayload = (devotee: Devotee) => {
+    const lines: string[] = ['TO:', devotee.name];
+    if (devotee.address) lines.push(devotee.address);
+    if (devotee.city || devotee.pincode)
+      lines.push([devotee.city, devotee.pincode].filter(Boolean).join(' - '));
+    if (devotee.phone) lines.push(`PH: ${devotee.country_code || '+91'}${devotee.phone}`);
+    if (templeAddress) { lines.push('', 'FROM:'); lines.push(templeAddress); }
+    return lines.join('\n');
   };
 
   const getAutoFontSize = (devotee: Devotee) => {
@@ -191,7 +192,21 @@ export function CoverPrint() {
     return `${Math.max(size, 7)}pt`;
   };
 
-  const hasMissingAddress = settings.isSpeedPost && !templeAddress;
+  // Auto font-size for SpeedPost address column (~100mm wide, narrower than full C6)
+  const getSpeedPostFontSize = (devotee: Devotee) => {
+    const lines = [
+      devotee.name,
+      devotee.address,
+      devotee.city ? `${devotee.city}${devotee.pincode ? ' - ' + devotee.pincode : ''}` : '',
+      devotee.phone ? `PH: ${devotee.country_code || '+91'}${devotee.phone}` : ''
+    ].filter(Boolean);
+    const maxLineLength = Math.max(...lines.map(l => l.length), 1);
+    let size = 12;
+    if (maxLineLength > 45) size = 7.5;
+    else if (maxLineLength > 35) size = 9;
+    else if (maxLineLength > 25) size = 10.5;
+    return `${Math.max(size, 7)}pt`;
+  };
 
   return (
     <div className="page-content">
@@ -199,24 +214,12 @@ export function CoverPrint() {
       <div className="no-print">
         <div className="section flex-between mb-16">
           <h2 className="mb-0">{t('print_title')}</h2>
-          <button className="btn btn-primary btn-sm" onClick={handlePrint} disabled={hasMissingAddress}>
+          <button className="btn btn-primary btn-sm" onClick={handlePrint}>
             {t('print_btn')}
           </button>
         </div>
 
-        {/* Warning Banner if FROM address is not set */}
-        {hasMissingAddress && (
-          <div className="card mb-16 text-center" style={{ border: '2px dashed var(--red)', background: 'rgba(246,70,93,0.05)', padding: '16px' }}>
-            <span style={{ fontSize: '2.5rem' }}>⚠️</span>
-            <h4 style={{ color: 'var(--red)', margin: '8px 0' }}>{t('print_warning_title')}</h4>
-            <p className="text-xs text-muted mb-12">
-              {t('print_warning_desc')}
-            </p>
-            <button className="btn btn-primary btn-sm btn-full" onClick={() => navigate('/profile')}>
-              {t('print_warning_btn')}
-            </button>
-          </div>
-        )}
+
 
         <div className="card mb-16">
           <h4 className="text-gold mb-12">{t('print_settings')}</h4>
@@ -305,9 +308,8 @@ export function CoverPrint() {
 
       {/* ── Printable Content ── */}
       <div className={`print-container mode-${settings.mode} grid-${settings.grid} ${settings.isSpeedPost ? 'speedpost-layout' : ''}`}>
-        {filtered.map((devotee, index) => {
-          const tracking = getMockTrackingNumber(index);
-          const qrData = getQRPayload(devotee, index);
+        {filtered.map((devotee) => {
+          const qrData = getQRPayload(devotee);
           
           return (
             <div 
@@ -325,68 +327,28 @@ export function CoverPrint() {
               }}
             >
               {settings.isSpeedPost ? (
-                // ── SPEED POST PREMIUM OPTIMIZED LAYOUT ──
-                <div className="speedpost-grid">
-                  
-                  {/* Header Strip */}
-                  <div className="speedpost-header">
-                    <span className="logo-text">🇮🇳 SPEED POST</span>
-                    <span className="logo-sub">DEPARTMENT OF POSTS, INDIA</span>
-                  </div>
-
-                  {/* Left Column: Address Blocks */}
-                  <div className="address-section">
-                    <div className="from-block">
-                      <span className="section-label">FROM (SENDER):</span>
-                      <div className="from-addr" style={{ whiteSpace: 'pre-line' }}>{toPostalCase(templeAddress)}</div>
-                    </div>
-
-                    <div className="to-block">
-                      <span className="section-label">TO (RECIPIENT):</span>
-                      <div className="to-name">{toPostalCase(devotee.name)}</div>
-                      <div className="to-address">{toPostalCase(devotee.address)}</div>
-                      <div className="to-city">
-                        {toPostalCase(devotee.city)} - <span className="to-pin">{devotee.pincode || 'NO PIN'}</span>
-                      </div>
-                      {devotee.phone && (
-                        <div className="to-phone">PHONE: {devotee.country_code || '+91'}{devotee.phone}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Column: QR and Barcodes */}
-                  <div className="barcode-section">
-                    {/* QR Code */}
-                    <div className="qr-container">
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`} 
-                        alt="Postal Routing QR"
-                        className="qr-img" 
-                      />
-                    </div>
-
-                    {/* Sorting Barcode (Pincode) */}
-                    {devotee.pincode && (
-                      <div className="barcode-item">
-                        <span className="barcode-label">SORTING PINCODE</span>
-                        <div 
-                          className="barcode-svg" 
-                          dangerouslySetInnerHTML={{ __html: getCode39SVG(devotee.pincode, 22) }} 
-                        />
-                        <span className="barcode-value">{devotee.pincode}</span>
+                // ── SPEED POST: TO address (left) + QR code (right, embeds FROM+TO) ──
+                <div className="sp-card" style={{ fontSize: getSpeedPostFontSize(devotee) }}>
+                  <div className="sp-address">
+                    <div className="sp-to-name">{toPostalCase(devotee.name)}</div>
+                    <div className="sp-to-addr">{toPostalCase(devotee.address)}</div>
+                    {(devotee.city || devotee.pincode) && (
+                      <div className="sp-to-city">
+                        {toPostalCase(devotee.city)}
+                        {devotee.pincode ? <> - <span className="sp-to-pin">{devotee.pincode}</span></> : null}
                       </div>
                     )}
-
-                    {/* Consignment Tracking Barcode */}
-                    <div className="barcode-item">
-                      <span className="barcode-label">CONSIGNMENT TRACKING</span>
-                      <div 
-                        className="barcode-svg" 
-                        dangerouslySetInnerHTML={{ __html: getCode39SVG(tracking, 22) }} 
-                      />
-                      <span className="barcode-value">{tracking}</span>
-                    </div>
-
+                    {devotee.phone && (
+                      <div className="sp-to-phone">PH: {devotee.country_code || '+91'}{devotee.phone}</div>
+                    )}
+                  </div>
+                  <div className="sp-qr">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`}
+                      alt="QR Code"
+                      className="sp-qr-img"
+                    />
+                    <div className="sp-qr-label">SCAN FOR DETAILS</div>
                   </div>
                 </div>
               ) : (
@@ -429,158 +391,92 @@ export function CoverPrint() {
             justify-content: center;
           }
           .speedpost-card {
-            min-height: 290px;
-            padding: 16px;
-            border: 1px dashed rgba(0,0,0,0.15);
+            min-height: 114mm;
+            border: 2px dashed rgba(0,0,0,0.2);
           }
         }
 
-        /* Speed Post CSS Grid & Elements */
-        .speedpost-grid {
+        /* ── Speed Post: TO address (left) + QR code (right) ── */
+        .sp-card {
           display: grid;
-          grid-template-columns: 1fr 180px;
-          grid-template-rows: auto 1fr;
-          grid-gap: 8px;
+          grid-template-columns: 1fr 48mm;
+          width: 100%;
           height: 100%;
-          border: 1px solid #000;
           box-sizing: border-box;
-          font-size: 8.5pt !important;
-          line-height: 1.25;
+          border: 0.5mm solid #000;
+          overflow: hidden;
+          color: inherit;
+          font-family: inherit;
         }
 
-        .speedpost-header {
-          grid-column: 1 / span 2;
-          background: #000;
-          color: #fff;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 4px 8px;
-          font-weight: 800;
-          letter-spacing: 0.5px;
-          font-size: 9pt !important;
-        }
-
-        .logo-text { color: var(--gold); }
-        .logo-sub { font-size: 7pt; opacity: 0.8; }
-
-        .address-section {
-          padding: 8px;
+        .sp-address {
+          padding: 6mm 8mm;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
-          border-right: 1.5px solid #000;
-          gap: 12px;
+          justify-content: center;
+          border-right: 0.5mm solid #000;
+          overflow: hidden;
+          word-break: break-word;
+          gap: 2px;
         }
 
-        .from-block {
-          border-bottom: 1px dashed #ccc;
-          padding-bottom: 6px;
-        }
-
-        .section-label {
-          display: block;
-          font-size: 7.5pt;
+        .sp-to-name {
           font-weight: 800;
-          color: #555;
+          font-size: 1.2em;
+          line-height: 1.2;
           margin-bottom: 2px;
-          text-decoration: underline;
         }
 
-        .from-text {
+        .sp-to-addr {
+          font-size: 1em;
+          line-height: 1.3;
+        }
+
+        .sp-to-city {
+          font-size: 1.05em;
           font-weight: 700;
-          font-size: 8.5pt;
+          line-height: 1.2;
+          margin-top: 2px;
         }
 
-        .from-addr {
-          font-size: 7.5pt;
-          color: #444;
-        }
-
-        .to-block {
-          padding-top: 4px;
-        }
-
-        .to-name {
-          font-weight: 800;
-          font-size: 11pt;
-          margin-bottom: 4px;
-        }
-
-        .to-address {
-          font-size: 9.5pt;
-          margin-bottom: 4px;
-        }
-
-        .to-city {
-          font-size: 10.5pt;
-          font-weight: 700;
-        }
-
-        .to-pin {
+        .sp-to-pin {
+          font-family: monospace;
           background: #000;
           color: #fff;
-          padding: 0 4px;
+          padding: 0 3px;
           border-radius: 2px;
-          font-family: monospace;
           letter-spacing: 1px;
         }
 
-        .to-phone {
-          font-size: 8.5pt;
-          margin-top: 4px;
-          font-weight: 700;
+        .sp-to-phone {
+          font-size: 0.88em;
+          margin-top: 3px;
         }
 
-        .barcode-section {
-          padding: 8px;
+        .sp-qr {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        .qr-container {
-          width: 72px;
-          height: 72px;
-          display: flex;
           align-items: center;
           justify-content: center;
-          background: #fff;
-          border: 1px solid #000;
+          padding: 4mm;
+          gap: 3px;
         }
 
-        .qr-img {
-          width: 66px;
-          height: 66px;
-        }
-
-        .barcode-item {
+        .sp-qr-img {
           width: 100%;
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+          max-width: 40mm;
+          height: auto;
+          display: block;
+          border: 0.3mm solid #ccc;
         }
 
-        .barcode-label {
-          font-size: 6.5pt;
-          font-weight: 800;
-          color: #333;
-          margin-bottom: 1px;
-        }
-
-        .barcode-svg {
-          width: 100%;
-          margin: 1px 0;
-        }
-
-        .barcode-value {
-          font-family: monospace;
-          font-size: 7.5pt;
+        .sp-qr-label {
+          font-size: 5.5pt;
           font-weight: 700;
+          text-align: center;
           letter-spacing: 0.5px;
+          color: #555;
+          margin-top: 2px;
         }
 
         @media print {
@@ -646,7 +542,7 @@ export function CoverPrint() {
             overflow: hidden;
           }
           
-          /* Speedpost card: fills the full C6 card with NO extra padding */
+          /* SpeedPost card: strict C6 165×114mm, no padding, no bleed */
           .speedpost-card {
             width: 162mm !important;
             height: 114mm !important;
@@ -657,25 +553,22 @@ export function CoverPrint() {
             box-sizing: border-box !important;
           }
 
-          /* Speedpost inner grid: must fill 100% of its card */
-          .speedpost-grid {
+          /* sp-card fills 100% of the speedpost-card */
+          .sp-card {
             width: 100% !important;
             height: 100% !important;
-            box-sizing: border-box !important;
             overflow: hidden !important;
-            border: 0.5mm solid #000 !important;
-            display: grid !important;
+            box-sizing: border-box !important;
           }
 
-          .speedpost-header {
+          .sp-to-pin {
             background-color: #000 !important;
+            color: #fff !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
 
-          .to-pin {
-            background-color: #000 !important;
-            color: #fff !important;
+          .sp-qr-img {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
