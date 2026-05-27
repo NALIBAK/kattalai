@@ -280,7 +280,7 @@ export function CoverPrint() {
                   </div>
                   <div className="sp-qr">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`}
                       alt="QR Code"
                       className="sp-qr-img"
                     />
@@ -292,10 +292,6 @@ export function CoverPrint() {
                 <div className="card-content">
                   <div className="name-line">{toPostalCase(devotee.name)}</div>
                   <div className="address-line">{toPostalCase(devotee.address)}</div>
-                  <div className="city-line">
-                    {toPostalCase(devotee.city)}
-                    {devotee.pincode ? ` - ${devotee.pincode}` : ''}
-                  </div>
                   {devotee.phone && (
                     <div className="phone-line">
                       PHONE: {devotee.country_code || '+91'}{devotee.phone}
@@ -335,7 +331,7 @@ export function CoverPrint() {
         /* ── Speed Post: TO address (left) + QR code (right) ── */
         .sp-card {
           display: grid;
-          grid-template-columns: 1fr 48mm;
+          grid-template-columns: 1fr 30%;
           width: 100%;
           height: 100%;
           box-sizing: border-box;
@@ -403,7 +399,6 @@ export function CoverPrint() {
           max-width: 40mm;
           height: auto;
           display: block;
-          border: 0.3mm solid #ccc;
         }
 
         .sp-qr-label {
@@ -478,8 +473,8 @@ export function CoverPrint() {
             overflow: hidden;
           }
           
-          /* SpeedPost card: strict C6 165×114mm, no padding, no bleed */
-          .speedpost-card {
+          /* SpeedPost on C6 envelope: strict 162×114mm, no bleed */
+          .mode-envelope .speedpost-card {
             width: 162mm !important;
             height: 114mm !important;
             max-width: 162mm !important;
@@ -489,12 +484,31 @@ export function CoverPrint() {
             box-sizing: border-box !important;
           }
 
-          /* sp-card fills 100% of the speedpost-card */
+          /* SpeedPost on A4 labels: fill grid cell, no fixed size */
+          .mode-labels .speedpost-card {
+            padding: 0 !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            height: 100%;
+          }
+
+          /* sp-card fills 100% of its speedpost-card container */
           .sp-card {
             width: 100% !important;
             height: 100% !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
+          }
+
+          /* Tighter padding inside small A4 label cells */
+          .mode-labels .sp-address {
+            padding: 3mm 4mm;
+          }
+          .mode-labels .sp-qr {
+            padding: 2mm;
+          }
+          .mode-labels .sp-qr-label {
+            display: none;
           }
 
           .sp-to-pin {
