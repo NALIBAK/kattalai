@@ -686,3 +686,25 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   }
 }
 
+/* ── About Logo Link Styles ── */
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease);
+}
+.logo-link:hover {
+  transform: scale(1.03);
+}
+.logo-link:hover .logo-icon {
+  background: var(--gold-light) !important;
+  box-shadow: 0 0 10px rgba(212,175,55,0.4);
+}
+.logo-link:hover .logo-text {
+  color: var(--gold) !important;
+}
+
+

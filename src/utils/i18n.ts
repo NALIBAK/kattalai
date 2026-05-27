@@ -270,6 +270,14 @@ export const translations = {
     upgrade_to_pro: '💬 வாட்ஸ்அப் மூலம் Pro-க்கு மேம்படுத்து',
     upgrade_pro_congrats: '🎉 நீங்கள் சிறந்த திட்டத்தில் உள்ளீர்கள்!',
     upgrade_pro_enjoy: 'நீங்கள் அனைத்து அம்சங்களையும் பயன்படுத்தலாம். மகிழுங்கள்!',
+    about_title: 'செயலி பற்றி',
+    about_developer: 'உருவாக்குநர் விபரங்கள்',
+    about_dev_name: 'எஸ்.எஸ்.கபிலன் தீக்ஷிதர்',
+    about_dev_role: 'முதன்மை மென்பொருள் உருவாக்குநர்',
+    about_dev_desc: 'பக்தர்கள் மற்றும் கோயில் கணக்குகளை எளிமையாகவும் நவீனமாகவும் நிர்வகிக்க இந்த செயலியை உருவாக்கியவர்.',
+    about_contact_btn: '💬 டெவலப்பரைத் தொடர்பு கொள்ளவும்',
+    about_plans_compare: 'திட்டங்கள் மற்றும் சிறப்பம்சங்கள் ஒப்பீடு',
+    about_plan_features: 'அம்சங்கள்',
   },
   en: {
     // Navigation
@@ -540,6 +548,14 @@ export const translations = {
     upgrade_to_pro: '💬 Upgrade to Pro via WhatsApp',
     upgrade_pro_congrats: "You're on the best plan!",
     upgrade_pro_enjoy: 'You have access to all features. Enjoy!',
+    about_title: 'About App',
+    about_developer: 'Developer Details',
+    about_dev_name: 'S.S.Kabilan Deekshithar',
+    about_dev_role: 'Lead Software Developer',
+    about_dev_desc: 'Creator of this application to simplify and modernize devotee records and temple ledger management.',
+    about_contact_btn: '💬 Contact Developer',
+    about_plans_compare: 'Plans & Features Comparison Matrix',
+    about_plan_features: 'Features',
   }
 };
 

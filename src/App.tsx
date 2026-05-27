@@ -19,6 +19,7 @@ import { BulkImport } from './pages/BulkImport';
 import { MapHub } from './pages/MapHub';
 import { Vasool } from './pages/Vasool';
 import { ContactDeveloper } from './pages/ContactDeveloper';
+import { AboutApp } from './pages/AboutApp';
 import { syncToGoogleDrive, getGoogleAccessToken, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from './utils/backup';
 import { GDriveGate } from './components/GDriveGate';
@@ -308,6 +309,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/finance" element={<FinanceStats />} />
             <Route path="/upgrade" element={<UpgradePlan />} />
+            <Route path="/about" element={<AboutApp />} />
           </Route>
         </Route>
       </Routes>
