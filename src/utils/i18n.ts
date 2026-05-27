@@ -286,6 +286,16 @@ export const translations = {
     pwa_ios_step_1: '1. सफாரி (Safari) உலாவியின் கீழே உள்ள "பகிர்" (Share) 📤 பொத்தானை தட்டவும்.',
     pwa_ios_step_2: '2. தோன்றும் மெனுவை கீழே நகர்த்தி "முகப்புத் திரையில் சேர்" (Add to Home Screen) ➕ என்பதைத் தேர்ந்தெடுக்கவும்.',
     pwa_ios_step_3: '3. மேல் வலது மூலையில் உள்ள "சேர்" (Add) ➕ பொத்தானை தட்டி நிறுவலை முடிக்கவும்.',
+    lock_title: 'பாதுகாப்புப் பூட்டு',
+    lock_enter_pin: 'செயலியைத் திறக்க 4-இலக்க PIN-ஐ உள்ளிடவும்',
+    lock_biometric_prompt: 'கைரேகை அல்லது முக அடையாளத்தைப் பயன்படுத்தவும்',
+    lock_forgot_pin: 'PIN குறியீட்டை மறந்துவிட்டீர்களா?',
+    lock_recovery_desc: 'பாதுகாப்பு காரணங்களுக்காக, உங்கள் பதிவுசெய்யப்பட்ட கூகுள் கணக்கை மீண்டும் சரிபார்ப்பதன் மூலம் உங்கள் PIN குறியீட்டை மீட்டமைக்கலாம்.',
+    lock_sec_settings: '🔐 செயலி பாதுகாப்பு & பூட்டு',
+    lock_enable_pin: 'PIN பூட்டைச் செயல்படுத்தவும்',
+    lock_enable_bio: 'கைரேகை / முக அடையாளப் பூட்டு',
+    lock_ios_uninstall_title: 'அனுமதியின்றி அழிப்பதைத் தடுக்க',
+    lock_ios_uninstall_desc: 'உங்கள் ஐபோன் அமைப்புகள் (Settings) -> Screen Time -> Content & Privacy Restrictions -> iTunes & App Store Purchases -> Deleting Apps சென்றிடுங்கள். அங்கே "Don\'t Allow" என்பதைத் தேர்வு செய்வதன் மூலம், உங்கள் Screen Time கடவுச்சொல் இன்றி எவரும் இந்தச் செயலியை நீக்க முடியாது!',
   },
   en: {
     // Navigation
@@ -571,7 +581,17 @@ export const translations = {
     pwa_ios_guide_title: 'How to Install on iOS (iPhone)?',
     pwa_ios_step_1: '1. Tap the Safari Share button 📤 at the bottom of the screen.',
     pwa_ios_step_2: '2. Scroll down and select "Add to Home Screen" ➕.',
-    pwa_ios_step_3: '3. Tap "Add" ➕ in the top-right corner to complete installation.',
+    pwa_ios_step_3: 'Tap "Add" ➕ in the top-right corner to complete installation.',
+    lock_title: 'App Security Lock',
+    lock_enter_pin: 'Enter 4-Digit PIN to Unlock',
+    lock_biometric_prompt: 'Use Biometrics',
+    lock_forgot_pin: 'Forgot PIN?',
+    lock_recovery_desc: 'For security, you must re-verify your Google Account to reset your PIN.',
+    lock_sec_settings: '🔐 Security & App Lock',
+    lock_enable_pin: 'Enable PIN Lock',
+    lock_enable_bio: 'Enable Biometric Unlock',
+    lock_ios_uninstall_title: 'Prevent Unauthorized App Removal',
+    lock_ios_uninstall_desc: 'Go to iPhone Settings -> Screen Time -> Content & Privacy Restrictions -> iTunes & App Store Purchases -> Deleting Apps. Select "Don\'t Allow" to completely block anyone from uninstalling Kattalai without your private Screen Time passcode!',
   }
 };
 

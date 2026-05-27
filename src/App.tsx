@@ -20,6 +20,7 @@ import { MapHub } from './pages/MapHub';
 import { Vasool } from './pages/Vasool';
 import { ContactDeveloper } from './pages/ContactDeveloper';
 import { AboutApp } from './pages/AboutApp';
+import { AppLock } from './components/AppLock';
 import { syncToGoogleDrive, getGoogleAccessToken, fetchLatestBackup, downloadBackup } from './utils/googleDrive';
 import { restoreFromBackupBlob, previewBackupBlob } from './utils/backup';
 import { GDriveGate } from './components/GDriveGate';
@@ -39,7 +40,10 @@ import { useToastStore } from './store';
 function App() {
   const { setCache, setLoading, plan, user } = useAuthStore();
   const { showToast } = useToastStore();
-  const { loadSettings, theme: appTheme, gDriveAutoSync, gDriveLinked, setGDriveSetting } = useSettingsStore();
+  const { 
+    loadSettings, theme: appTheme, gDriveAutoSync, gDriveLinked, setGDriveSetting,
+    appLockEnabled, isLocked, lockApp
+  } = useSettingsStore();
   const { loadCategories } = useCategoryStore();
   const { devotees, load: loadDevotees } = useDevoteeStore();
 
@@ -238,6 +242,19 @@ function App() {
     document.documentElement.setAttribute('data-theme', appTheme);
   }, [appTheme]);
 
+  useEffect(() => {
+    if (!appLockEnabled) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        lockApp();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [appLockEnabled, lockApp]);
+
   return (
     <BrowserRouter basename="/kattalai">
       {/* ── Cloud Update Banner (Conflict Resolver) ── */}
@@ -314,6 +331,7 @@ function App() {
         </Route>
       </Routes>
       <ToastContainer />
+      {isLocked && <AppLock />}
     </BrowserRouter>
   );
 }

@@ -109,6 +109,15 @@ interface SettingsState {
   gDriveLinked: boolean;
   gDriveAutoSync: boolean;
   gDriveLastSync: string | null;
+  appLockEnabled: boolean;
+  appLockPinHash: string;
+  appLockBiometricsEnabled: boolean;
+  appLockBiometricCredId: string;
+  isLocked: boolean;
+  setAppLock: (enabled: boolean, pinHash: string) => Promise<void>;
+  setBiometricsEnabled: (enabled: boolean, credId?: string) => Promise<void>;
+  lockApp: () => void;
+  unlockApp: () => void;
   loadSettings: () => Promise<void>;
   setTheme: (t: SettingsState['theme']) => void;
   setDefaultAmount: (a: number) => void;
@@ -137,6 +146,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   gDriveLinked: false,
   gDriveAutoSync: false,
   gDriveLastSync: null,
+  appLockEnabled: false,
+  appLockPinHash: '',
+  appLockBiometricsEnabled: false,
+  appLockBiometricCredId: '',
+  isLocked: false,
   loadSettings: async () => {
     const templeName = await getSetting('temple_name', 'Sri Kattalai Temple');
     const templeAddress = await getSetting('temple_address', '');
@@ -151,6 +165,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const gDriveLinked = await getSetting('gdrive_linked', false);
     const gDriveAutoSync = await getSetting('gdrive_autosync', false);
     const gDriveLastSync = await getSetting('gdrive_lastsync', null);
+    const appLockEnabled = await getSetting('app_lock_enabled', false);
+    const appLockPinHash = await getSetting('app_lock_pin_hash', '');
+    const appLockBiometricsEnabled = await getSetting('app_lock_biometrics_enabled', false);
+    const appLockBiometricCredId = await getSetting('app_lock_biometric_cred_id', '');
     
     let templates = await getAllMessageTemplates();
     
@@ -169,7 +187,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       templeName, templeAddress, defaultAmount, prasadhamRule, theme: theme as SettingsState['theme'], language, 
       notifyDaysBefore, broadcastResetDay,
       messageTemplates: templates,
-      gDriveLinked, gDriveAutoSync, gDriveLastSync
+      gDriveLinked, gDriveAutoSync, gDriveLastSync,
+      appLockEnabled, appLockPinHash, appLockBiometricsEnabled, appLockBiometricCredId,
+      isLocked: appLockEnabled
     } as unknown as Partial<SettingsState>);
   },
   setTheme: async (t) => {
@@ -198,6 +218,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const dbKey = key === 'gDriveLinked' ? 'gdrive_linked' : key === 'gDriveAutoSync' ? 'gdrive_autosync' : 'gdrive_lastsync';
     await setSetting(dbKey, value);
   },
+  setAppLock: async (enabled, pinHash) => {
+    set({ appLockEnabled: enabled, appLockPinHash: pinHash, isLocked: false });
+    await setSetting('app_lock_enabled', enabled);
+    await setSetting('app_lock_pin_hash', pinHash);
+  },
+  setBiometricsEnabled: async (enabled, credId = '') => {
+    set({ appLockBiometricsEnabled: enabled, appLockBiometricCredId: credId });
+    await setSetting('app_lock_biometrics_enabled', enabled);
+    await setSetting('app_lock_biometric_cred_id', credId);
+  },
+  lockApp: () => set({ isLocked: true }),
+  unlockApp: () => set({ isLocked: false }),
   
   addTemplate: async (label, text) => {
     const newTemplate: MessageTemplate = {

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CryptoJS from 'crypto-js';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getDB, Devotee, PaymentEntry, upsertDevotee } from '../db';
 import { restoreFromBackupBlob } from '../utils/backup';
@@ -16,7 +17,9 @@ export function Settings() {
   // Stores
   const { 
     theme, defaultAmount, language,
-    setTheme, setDefaultAmount, setLanguage
+    setTheme, setDefaultAmount, setLanguage,
+    appLockEnabled, appLockBiometricsEnabled,
+    setAppLock, setBiometricsEnabled
   } = useSettingsStore();
   const { devotees, refresh: refreshDevotees } = useDevoteeStore();
   const { categories, loadCategories } = useCategoryStore();
@@ -107,6 +110,91 @@ export function Settings() {
   const [vcfCategory, setVcfCategory] = useState('');
   const [vcfModalOpen, setVcfModalOpen] = useState(false);
   const [vcfImporting, setVcfImporting] = useState(false);
+
+  // App Lock Configuration State
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [tempPin, setTempPin] = useState('');
+  const [tempPinConfirm, setTempPinConfirm] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [isUninstallDismissed, setIsUninstallDismissed] = useState(() => {
+    return localStorage.getItem('kattalai_ios_uninstall_dismissed') === 'true';
+  });
+
+  const handleTogglePinLock = async () => {
+    if (appLockEnabled) {
+      if (window.confirm(isTa ? 'பாதுகாப்புப் பூட்டை முடக்க விரும்புகிறீர்களா?' : 'Are you sure you want to disable the App Lock?')) {
+        await setAppLock(false, '');
+        await setBiometricsEnabled(false);
+        showToast(isTa ? 'பாதுகாப்புப் பூட்டு முடக்கப்பட்டது' : 'App Lock disabled', 'info');
+      }
+    } else {
+      setTempPin('');
+      setTempPinConfirm('');
+      setPinError('');
+      setShowPinModal(true);
+    }
+  };
+
+  const handleSavePin = async () => {
+    if (tempPin.length !== 4 || tempPinConfirm.length !== 4) {
+      setPinError(isTa ? '4-இலக்க எண் தேவை' : 'PIN must be exactly 4 digits');
+      return;
+    }
+    if (tempPin !== tempPinConfirm) {
+      setPinError(isTa ? 'எண்கள் பொருந்தவில்லை!' : 'PINs do not match!');
+      return;
+    }
+
+    const hash = CryptoJS.SHA256(tempPin).toString();
+    await setAppLock(true, hash);
+    setShowPinModal(false);
+    showToast(isTa ? 'PIN பூட்டு வெற்றிகரமாக அமைக்கப்பட்டது!' : 'PIN lock enabled successfully!', 'success');
+  };
+
+  const handleToggleBiometrics = async () => {
+    if (appLockBiometricsEnabled) {
+      await setBiometricsEnabled(false);
+      showToast(isTa ? 'உறுதிப்பாடு பூட்டு நீக்கப்பட்டது' : 'Biometric unlock disabled', 'info');
+    } else {
+      if (!window.PublicKeyCredential) {
+        showToast(isTa ? 'கைரேகை/முக அடையாளப் பூட்டு ஆதரிக்கப்படவில்லை.' : 'Biometrics not supported on this browser.', 'error');
+        return;
+      }
+
+      try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        const options: CredentialCreationOptions = {
+          publicKey: {
+            challenge,
+            rp: { name: 'Kattalai' },
+            user: {
+              id: new Uint8Array([1]),
+              name: 'kattalai-user',
+              displayName: 'Kattalai Admin'
+            },
+            pubKeyCredParams: [{ alg: -7, type: 'public-key' }], // ES256
+            timeout: 60000,
+            authenticatorSelection: {
+              authenticatorAttachment: 'platform',
+              userVerification: 'required'
+            }
+          }
+        };
+
+        const credential = await navigator.credentials.create(options) as any;
+        if (credential) {
+          const base64Id = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+          await setBiometricsEnabled(true, base64Id);
+          showToast(isTa ? 'கைரேகை/முக அடையாளப் பூட்டு செயல்படுத்தப்பட்டது!' : 'Biometrics registered successfully!', 'success');
+        }
+      } catch (e) {
+        console.error('Biometric registration failed', e);
+        showToast(isTa ? 'பதிவு செய்வதில் தோல்வி! மீண்டும் முயலவும்.' : 'Registration failed! Please try again.', 'error');
+      }
+    }
+  };
 
   // ── VCF Export ─────────────────────────────────────────────────
   const handleExportVCF = () => {
@@ -512,6 +600,138 @@ export function Settings() {
             )
           )}
 
+          {/* 🔐 Security & App Lock Section */}
+          <div className="card mb-16" style={{ border: appLockEnabled ? '1.5px solid var(--gold)' : undefined }}>
+            <h4 className="text-gold mb-16">{t('lock_sec_settings')}</h4>
+            
+            {/* PIN Lock Toggle */}
+            <div className="flex-between mb-16">
+              <div>
+                <div className="fw-600">{t('lock_enable_pin')}</div>
+                <div className="text-xs text-muted mt-2">
+                  {appLockEnabled ? (isTa ? '4-இலக்க PIN பாதுகாப்பு செயல்படுத்தப்பட்டது' : '4-digit PIN protection is active') : (isTa ? 'செயலியைப் பாதுகாக்க PIN அமைக்கவும்' : 'Set a PIN to secure the app')}
+                </div>
+              </div>
+              <button 
+                onClick={handleTogglePinLock}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: appLockEnabled ? 'var(--gold)' : 'var(--surface-2)',
+                  color: appLockEnabled ? '#000' : 'var(--text-3)',
+                  transition: 'all 0.15s'
+                }}
+              >
+                {appLockEnabled ? (isTa ? 'செயலில்' : 'ACTIVE') : (isTa ? 'செயல்படுத்து' : 'ENABLE')}
+              </button>
+            </div>
+
+            {/* Change PIN Action */}
+            {appLockEnabled && (
+              <div className="flex-between mb-16 pt-12" style={{ borderTop: '1px solid var(--border)' }}>
+                <div className="text-sm fw-600">{isTa ? 'PIN குறியீட்டை மாற்றவும்' : 'Change Security PIN'}</div>
+                <button 
+                  className="btn btn-ghost btn-sm" 
+                  onClick={() => {
+                    setTempPin('');
+                    setTempPinConfirm('');
+                    setPinError('');
+                    setShowPinModal(true);
+                  }}
+                >
+                  ✏️ {isTa ? 'திருத்து' : 'Change'}
+                </button>
+              </div>
+            )}
+
+            {/* Biometric Toggle */}
+            {appLockEnabled && (
+              <div className="flex-between mb-16 pt-12" style={{ borderTop: '1px solid var(--border)' }}>
+                <div>
+                  <div className="fw-600">{t('lock_enable_bio')}</div>
+                  <div className="text-xs text-muted mt-2">
+                    {isTa ? 'கைரேகை / Face ID மூலம் திறக்க' : 'Unlock using Fingerprint or Face ID'}
+                  </div>
+                </div>
+                <button 
+                  onClick={handleToggleBiometrics}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: appLockBiometricsEnabled ? 'var(--gold)' : 'var(--surface-2)',
+                    color: appLockBiometricsEnabled ? '#000' : 'var(--text-3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {appLockBiometricsEnabled ? (isTa ? 'செயலில்' : 'ACTIVE') : (isTa ? 'செயல்படுத்து' : 'ENABLE')}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 🛡️ iOS Uninstall Protection Banner */}
+          {isIOS && !isUninstallDismissed && (
+            <div className="card mb-16" style={{
+              border: '1.5px solid var(--red)',
+              background: 'rgba(246,70,93,0.03)',
+              boxShadow: '0 4px 16px rgba(246,70,93,0.1)',
+              position: 'relative'
+            }}>
+              <button 
+                onClick={() => {
+                  setIsUninstallDismissed(true);
+                  localStorage.setItem('kattalai_ios_uninstall_dismissed', 'true');
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 12,
+                  fontSize: '1.1rem',
+                  color: 'var(--text-3)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4
+                }}
+              >
+                ✖
+              </button>
+              
+              <div className="flex gap-12" style={{ alignItems: 'flex-start', paddingRight: 20 }}>
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: 'rgba(246,70,93,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  color: 'var(--red)',
+                  flexShrink: 0
+                }}>
+                  🛡️
+                </div>
+                <div>
+                  <h4 className="m-0 fw-700" style={{ fontSize: '0.9375rem', color: 'var(--text)' }}>
+                    {t('lock_ios_uninstall_title')}
+                  </h4>
+                  <p className="text-xs text-muted mt-6" style={{ lineHeight: 1.4, opacity: 0.9 }}>
+                    {t('lock_ios_uninstall_desc')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Global Settings */}
           <div className="card mb-16">
             <h4 className="text-gold mb-16">{t('settings_pref')}</h4>
@@ -743,6 +963,80 @@ export function Settings() {
           </div>
         </div>
       )}
+      {/* ── PIN Setup / Change Modal ── */}
+      {showPinModal && (
+        <div className="sheet-overlay animate-fade-in" onClick={e => e.target === e.currentTarget && setShowPinModal(false)}>
+          <div className="sheet animate-slide-up" style={{ zIndex: 100000 }}>
+            <div className="sheet-handle" />
+
+            <div className="flex-between mb-16">
+              <h3 className="mb-0 text-gold fw-800">{isTa ? 'பாதுகாப்பு PIN அமைத்தல்' : 'Configure Security PIN'}</h3>
+              <button className="btn-icon" onClick={() => setShowPinModal(false)}>✖</button>
+            </div>
+
+            <div className="flex-col gap-16 p-8">
+              {/* Temp Pin */}
+              <div className="form-group">
+                <label className="form-label">{isTa ? '4-இலக்க புதிய PIN' : 'Enter 4-Digit PIN'}</label>
+                <input 
+                  className="form-input" 
+                  type="password" 
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4} 
+                  placeholder="••••"
+                  value={tempPin} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    if (val.length <= 4) setTempPin(val);
+                  }}
+                  style={{ letterSpacing: '10px', fontSize: '1.25rem', textAlign: 'center' }}
+                />
+              </div>
+
+              {/* Confirm Pin */}
+              <div className="form-group">
+                <label className="form-label">{isTa ? 'புதிய PIN-ஐ உறுதிப்படுத்தவும்' : 'Confirm 4-Digit PIN'}</label>
+                <input 
+                  className="form-input" 
+                  type="password" 
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4} 
+                  placeholder="••••"
+                  value={tempPinConfirm} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    if (val.length <= 4) setTempPinConfirm(val);
+                  }}
+                  style={{ letterSpacing: '10px', fontSize: '1.25rem', textAlign: 'center' }}
+                />
+              </div>
+
+              {pinError && (
+                <div className="form-error text-center">{pinError}</div>
+              )}
+            </div>
+
+            <div className="flex gap-12 mt-16">
+              <button 
+                className="btn btn-primary flex-1" 
+                onClick={handleSavePin}
+                style={{ background: 'var(--gold)', color: '#000', fontWeight: 700 }}
+              >
+                {t('save')}
+              </button>
+              <button 
+                className="btn btn-ghost flex-1" 
+                onClick={() => setShowPinModal(false)}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── iOS Installation Guide Bottom Sheet ── */}
       {showIOSSheet && (
         <div className="sheet-overlay" onClick={e => e.target === e.currentTarget && setShowIOSSheet(false)}>
