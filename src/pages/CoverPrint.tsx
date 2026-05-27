@@ -251,10 +251,10 @@ export function CoverPrint() {
               key={devotee.id} 
               className={`print-card ${settings.isSpeedPost ? 'speedpost-card' : ''}`}
               style={{
-                paddingTop: settings.isSpeedPost ? '0' : `${settings.marginTop}mm`,
-                paddingBottom: settings.isSpeedPost ? '0' : `${settings.marginBottom}mm`,
-                paddingLeft: settings.isSpeedPost ? '0' : `${settings.marginLeft}mm`,
-                paddingRight: settings.isSpeedPost ? '0' : `${settings.marginRight}mm`,
+                paddingTop: `${settings.marginTop}mm`,
+                paddingBottom: `${settings.marginBottom}mm`,
+                paddingLeft: `${settings.marginLeft}mm`,
+                paddingRight: `${settings.marginRight}mm`,
                 color: settings.textColor,
                 fontWeight: settings.isBold ? 700 : 400,
                 fontSize: getAutoFontSize(devotee),
@@ -328,7 +328,6 @@ export function CoverPrint() {
           width: 100%;
           height: 100%;
           box-sizing: border-box;
-          border: 0.5mm solid #000;
           overflow: hidden;
           color: inherit;
           font-family: inherit;
@@ -339,7 +338,6 @@ export function CoverPrint() {
           display: flex;
           flex-direction: column;
           justify-content: center;
-          border-right: 0.5mm solid #000;
           overflow: hidden;
           word-break: break-word;
           gap: 2px;
@@ -472,14 +470,12 @@ export function CoverPrint() {
             height: 114mm !important;
             max-width: 162mm !important;
             max-height: 114mm !important;
-            padding: 0 !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
           }
 
           /* SpeedPost on A4 labels: fill grid cell, no fixed size */
           .mode-labels .speedpost-card {
-            padding: 0 !important;
             overflow: hidden !important;
             box-sizing: border-box !important;
             height: 100%;
