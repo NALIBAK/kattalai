@@ -131,16 +131,64 @@ export function CoverPrint() {
   };
 
   const getAutoFontSize = (devotee: Devotee) => {
-    const lines = [devotee.name, devotee.address, `${devotee.city} ${devotee.pincode || ''}`];
-    const maxLineLength = Math.max(...lines.map(l => (l || '').length));
-    
+    const fullAddress = [
+      devotee.name,
+      devotee.address,
+      `${devotee.city} ${devotee.pincode || ''}`,
+      devotee.phone ? `PHONE: ${devotee.country_code || '+91'}${devotee.phone}` : ''
+    ].filter(Boolean);
+
+    const maxLineLength = Math.max(...fullAddress.map(l => l.length), 1);
+    const totalChars = fullAddress.join(' ').length;
+
+    // Base font size from user settings
     let size = settings.baseFontSize;
-    
-    if (maxLineLength > 60) size = settings.baseFontSize * 0.7;
-    else if (maxLineLength > 45) size = settings.baseFontSize * 0.82;
-    else if (maxLineLength > 35) size = settings.baseFontSize * 0.9;
-    
-    return `${size}pt`;
+
+    // Apply auto-scaling for C6 Envelope mode
+    if (settings.mode === 'envelope') {
+      // Scale down for very long single lines to avoid wrap-around clipping
+      if (maxLineLength > 55) {
+        size *= 0.65;
+      } else if (maxLineLength > 40) {
+        size *= 0.8;
+      } else if (maxLineLength > 28) {
+        size *= 0.9;
+      }
+
+      // Scale down if total character count is very large (prevents vertical overflow)
+      if (totalChars > 180) {
+        size *= 0.7;
+      } else if (totalChars > 120) {
+        size *= 0.85;
+      }
+    } else {
+      // settings.mode === 'labels' (A4 Label Mode)
+      // Scale down based on Grid type since A4 labels are smaller than C6 envelopes
+      let gridFactor = 1.0;
+      if (settings.grid === '2x4') {
+        gridFactor = 0.75; // 8 labels
+      } else if (settings.grid === '2x5') {
+        gridFactor = 0.65; // 10 labels
+      } else if (settings.grid === '3x5') {
+        gridFactor = 0.55; // 15 labels
+      }
+
+      size *= gridFactor;
+
+      // Also apply line length scaling within the smaller label box
+      if (maxLineLength > 45) {
+        size *= 0.7;
+      } else if (maxLineLength > 30) {
+        size *= 0.85;
+      }
+
+      if (totalChars > 120) {
+        size *= 0.75;
+      }
+    }
+
+    // Ensure we don't go below a readable minimum (e.g. 7pt)
+    return `${Math.max(size, 7)}pt`;
   };
 
   const hasMissingAddress = settings.isSpeedPost && !templeAddress;
@@ -618,11 +666,13 @@ export function CoverPrint() {
         }
 
         .card-content {
-          line-height: 1.4;
+          line-height: 1.2;
           word-wrap: break-word;
         }
-        .name-line {
-          margin-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px;
+        .name-line, .address-line, .city-line, .phone-line {
+          margin: 0;
+          padding: 0;
+          border: none;
         }
       `}</style>
     </div>
