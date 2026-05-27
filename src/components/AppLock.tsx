@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettingsStore, useAuthStore, useToastStore } from '../store';
-import { signInWithGoogle } from '../auth';
+import { signInWithGoogle, initGoogleAuth } from '../auth';
 import CryptoJS from 'crypto-js';
 
 export function AppLock() {
@@ -21,6 +21,15 @@ export function AppLock() {
   const [isVerifying, setIsVerifying] = useState(false);
 
   const isTa = t('save') === 'சேமி';
+
+  // Load Google Auth dynamically on recovery sheet display
+  useEffect(() => {
+    if (showRecoveryModal) {
+      initGoogleAuth().catch(e => {
+        console.error('Failed to load Google Auth API for recovery', e);
+      });
+    }
+  }, [showRecoveryModal]);
 
   // Trigger biometric prompt if enabled on mount
   useEffect(() => {
@@ -264,6 +273,9 @@ export function AppLock() {
             </p>
             
             <div className="flex-col gap-12">
+              {/* Target element for Google Sign-In button rendering */}
+              <div id="google-signin-btn" className="flex-center w-full min-h-[44px]" style={{ margin: '8px 0' }}></div>
+
               <button 
                 className="btn btn-primary w-full btn-lg" 
                 onClick={handleGoogleRecovery}
