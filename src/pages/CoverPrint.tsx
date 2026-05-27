@@ -71,7 +71,6 @@ export function CoverPrint() {
     const fullAddress = [
       devotee.name,
       devotee.address,
-      `${devotee.city} ${devotee.pincode || ''}`,
       devotee.phone ? `PHONE: ${devotee.country_code || '+91'}${devotee.phone}` : ''
     ].filter(Boolean);
 
@@ -306,19 +305,55 @@ export function CoverPrint() {
             background: #eee;
             padding: 20px;
             border-radius: 8px;
+            align-items: center;
           }
-          .print-card {
+          
+          /* Screen: C6 Envelope Mode (Landscape Preview) */
+          .mode-envelope {
+            width: 100%;
+          }
+          .mode-envelope .print-card {
+            width: 162mm;
+            height: 114mm;
+            max-width: 100%;
+            margin: 0 auto;
             background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            min-height: 200px;
+            border-radius: 4px;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            box-sizing: border-box;
+            position: relative;
           }
-          .speedpost-card {
-            min-height: 114mm;
-            border: 2px dashed rgba(0,0,0,0.2);
+          
+          /* Screen: A4 Labels Mode (Portrait Preview Grid) */
+          .mode-labels {
+            display: grid;
+            width: 210mm;
+            max-width: 100%;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            grid-gap: 0;
+            margin: 0 auto;
           }
+          .mode-labels .print-card {
+            background: white;
+            border: 0.3mm dashed #bbb;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+            overflow: hidden;
+          }
+          .grid-2x4 { grid-template-columns: repeat(2, 50%); }
+          .grid-2x4 .print-card { height: 74.25mm; }
+          
+          .grid-2x5 { grid-template-columns: repeat(2, 50%); }
+          .grid-2x5 .print-card { height: 59.4mm; }
+          
+          .grid-3x5 { grid-template-columns: repeat(3, 33.333%); }
+          .grid-3x5 .print-card { height: 59.4mm; }
         }
 
         /* ── Speed Post: TO address (left) + QR code (right) ── */
@@ -444,24 +479,28 @@ export function CoverPrint() {
           /* Label Mode - A4 */
           .mode-labels {
             display: grid !important;
-            width: 210mm;
-            height: 297mm;
-            grid-gap: 0;
-            padding: 0;
+            width: 210mm !important;
+            grid-gap: 0 !important;
+            padding: 0 !important;
           }
 
-          .grid-2x4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); }
-          .grid-2x5 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(5, 1fr); }
-          .grid-3x5 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); }
+          .grid-2x4 { grid-template-columns: repeat(2, 50%) !important; }
+          .grid-2x4 .print-card { height: 74.25mm !important; page-break-inside: avoid !important; }
+          
+          .grid-2x5 { grid-template-columns: repeat(2, 50%) !important; }
+          .grid-2x5 .print-card { height: 59.4mm !important; page-break-inside: avoid !important; }
+          
+          .grid-3x5 { grid-template-columns: repeat(3, 33.333%) !important; }
+          .grid-3x5 .print-card { height: 59.4mm !important; page-break-inside: avoid !important; }
 
           .mode-labels .print-card {
-            border: 0.3mm dashed #bbb;
-            page-break-inside: avoid;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-sizing: border-box;
-            overflow: hidden;
+            border: 0.3mm dashed #bbb !important;
+            page-break-inside: avoid !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
           }
           
           /* SpeedPost on C6 envelope: strict 162×114mm, no bleed */
@@ -478,7 +517,7 @@ export function CoverPrint() {
           .mode-labels .speedpost-card {
             overflow: hidden !important;
             box-sizing: border-box !important;
-            height: 100%;
+            height: 100% !important;
           }
 
           /* sp-card fills 100% of its speedpost-card container */
@@ -491,13 +530,13 @@ export function CoverPrint() {
 
           /* Tighter padding inside small A4 label cells */
           .mode-labels .sp-address {
-            padding: 3mm 4mm;
+            padding: 3mm 4mm !important;
           }
           .mode-labels .sp-qr {
-            padding: 2mm;
+            padding: 2mm !important;
           }
           .mode-labels .sp-qr-label {
-            display: none;
+            display: none !important;
           }
 
           .sp-to-pin {
