@@ -278,6 +278,14 @@ export const translations = {
     about_contact_btn: '💬 டெவலப்பரைத் தொடர்பு கொள்ளவும்',
     about_plans_compare: 'திட்டங்கள் மற்றும் சிறப்பம்சங்கள் ஒப்பீடு',
     about_plan_features: 'அம்சங்கள்',
+    pwa_install_title: 'செயலியை நிறுவவும்',
+    pwa_install_desc: 'ஸ்ரீ கட்டளை செயலியை உங்கள் முகப்புத் திரையில் நிறுவி, மிக வேகமாகவும் ஆஃப்லைனிலும் பயன்படுத்தவும்.',
+    pwa_btn_install: '📲 செயலியை நிறுவு',
+    pwa_installed_badge: '✓ செயலி நிறுவப்பட்டுள்ளது',
+    pwa_ios_guide_title: 'ஐபோனில் (iOS) நிறுவுவது எப்படி?',
+    pwa_ios_step_1: '1. सफாரி (Safari) உலாவியின் கீழே உள்ள "பகிர்" (Share) 📤 பொத்தானை தட்டவும்.',
+    pwa_ios_step_2: '2. தோன்றும் மெனுவை கீழே நகர்த்தி "முகப்புத் திரையில் சேர்" (Add to Home Screen) ➕ என்பதைத் தேர்ந்தெடுக்கவும்.',
+    pwa_ios_step_3: '3. மேல் வலது மூலையில் உள்ள "சேர்" (Add) ➕ பொத்தானை தட்டி நிறுவலை முடிக்கவும்.',
   },
   en: {
     // Navigation
@@ -556,6 +564,14 @@ export const translations = {
     about_contact_btn: '💬 Contact Developer',
     about_plans_compare: 'Plans & Features Comparison Matrix',
     about_plan_features: 'Features',
+    pwa_install_title: 'Install Application',
+    pwa_install_desc: 'Install Kattalai on your home screen for quick, offline-ready access.',
+    pwa_btn_install: '📲 Install App',
+    pwa_installed_badge: '✓ App Installed & Running',
+    pwa_ios_guide_title: 'How to Install on iOS (iPhone)?',
+    pwa_ios_step_1: '1. Tap the Safari Share button 📤 at the bottom of the screen.',
+    pwa_ios_step_2: '2. Scroll down and select "Add to Home Screen" ➕.',
+    pwa_ios_step_3: '3. Tap "Add" ➕ in the top-right corner to complete installation.',
   }
 };
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettingsStore, useDevoteeStore, useCategoryStore, useToastStore } from '../store';
 import { getDB, Devotee, PaymentEntry, upsertDevotee } from '../db';
@@ -11,6 +11,7 @@ export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useToastStore();
   const { t } = useTranslation();
+  const isTa = t('save') === 'சேமி';
   
   // Stores
   const { 
@@ -23,6 +24,69 @@ export function Settings() {
   // Local state for UI
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+
+  // PWA Installation State
+  const [isStandalone, setIsStandalone] = useState(() => {
+    return window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+  });
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(() => (window as any).deferredPrompt);
+  const [isIOS] = useState(() => {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  });
+  const [showIOSSheet, setShowIOSSheet] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    return localStorage.getItem('kattalai_pwa_dismissed') === 'true';
+  });
+
+  useEffect(() => {
+    const handleInstallable = () => {
+      setDeferredPrompt((window as any).deferredPrompt);
+    };
+    const handleInstalled = () => {
+      setIsStandalone(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('pwa-installable', handleInstallable);
+    window.addEventListener('pwa-installed', handleInstalled);
+    
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      setIsStandalone(e.matches);
+    };
+    
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+    }
+
+    return () => {
+      window.removeEventListener('pwa-installable', handleInstallable);
+      window.removeEventListener('pwa-installed', handleInstalled);
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      }
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        (window as any).deferredPrompt = null;
+        setDeferredPrompt(null);
+      }
+    } else if (isIOS) {
+      setShowIOSSheet(true);
+    } else {
+      showToast(
+        isTa
+          ? 'செயலியை நிறுவ: உலாவியின் மெனுவில் (⋮) "செயலியை நிறுவு" அல்லது "முகப்புத் திரையில் சேர்" என்பதைத் தேர்ந்தெடுக்கவும்.'
+          : 'To install: Open browser menu (⋮) and select "Install app" or "Add to Home Screen".',
+        'info'
+      );
+    }
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
   const vcfInputRef = useRef<HTMLInputElement>(null);
 
@@ -359,6 +423,95 @@ export function Settings() {
         <div className="section mb-16">
           <h2 className="mb-16">{t('settings_title')}</h2>
 
+          {/* ── PWA Installation Support ── */}
+          {isStandalone ? (
+            <div className="flex-center mb-16" style={{ width: '100%' }}>
+              <div className="badge badge-gold" style={{ 
+                padding: '8px 16px', 
+                fontSize: '0.85rem', 
+                fontWeight: 700, 
+                border: '1.5px solid var(--gold)',
+                boxShadow: '0 2px 10px rgba(212,175,55,0.2)',
+                background: 'rgba(212,175,55,0.08)',
+                width: '100%',
+                justifyContent: 'center',
+                gap: '8px'
+              }}>
+                👑 {t('pwa_installed_badge')}
+              </div>
+            </div>
+          ) : (
+            (!isDismissed && (deferredPrompt || isIOS || true)) && (
+              <div className="card mb-16" style={{
+                border: '1.5px solid var(--gold)',
+                background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%)',
+                boxShadow: '0 4px 16px rgba(212,175,55,0.15)',
+                position: 'relative'
+              }}>
+                <button 
+                  onClick={() => {
+                    setIsDismissed(true);
+                    localStorage.setItem('kattalai_pwa_dismissed', 'true');
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 12,
+                    fontSize: '1.1rem',
+                    color: 'var(--text-3)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 4
+                  }}
+                >
+                  ✖
+                </button>
+                
+                <div className="flex gap-12" style={{ alignItems: 'flex-start', paddingRight: 20 }}>
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    background: 'rgba(212,175,55,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.5rem',
+                    flexShrink: 0
+                  }}>
+                    📱
+                  </div>
+                  <div>
+                    <h4 className="m-0 fw-700" style={{ fontSize: '0.9375rem', color: 'var(--text)' }}>
+                      {t('pwa_install_title')}
+                    </h4>
+                    <p className="text-xs text-muted mt-4" style={{ lineHeight: 1.4, opacity: 0.9 }}>
+                      {t('pwa_install_desc')}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  className="btn btn-primary btn-full mt-12 animate-hover-scale"
+                  onClick={handleInstallApp}
+                  style={{
+                    background: 'var(--gold)',
+                    color: '#000',
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                    height: 'auto',
+                    minHeight: '38px',
+                    padding: '8px 16px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  {t('pwa_btn_install')}
+                </button>
+              </div>
+            )
+          )}
+
           {/* Global Settings */}
           <div className="card mb-16">
             <h4 className="text-gold mb-16">{t('settings_pref')}</h4>
@@ -586,6 +739,67 @@ export function Settings() {
               disabled={vcfImporting || vcfContacts.filter(c => c.selected).length === 0 || !vcfCategory}
             >
               {vcfImporting ? t('settings_vcf_importing') : t('settings_vcf_import_btn').replace('{count}', String(vcfContacts.filter(c => c.selected).length))}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* ── iOS Installation Guide Bottom Sheet ── */}
+      {showIOSSheet && (
+        <div className="sheet-overlay" onClick={e => e.target === e.currentTarget && setShowIOSSheet(false)}>
+          <div className="sheet animate-slide-up" style={{ maxHeight: '90dvh' }}>
+            <div className="sheet-handle" />
+
+            <div className="flex-between mb-16">
+              <div>
+                <h3 className="mb-0 text-gold fw-800">{t('pwa_ios_guide_title')}</h3>
+              </div>
+              <button className="btn-icon" onClick={() => setShowIOSSheet(false)}>✖</button>
+            </div>
+
+            <div className="flex-col gap-16 p-8" style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>
+              {/* Step 1 */}
+              <div className="flex gap-12" style={{ alignItems: 'flex-start' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 14, background: 'var(--surface-2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0
+                }}>1</div>
+                <div>
+                  <div className="fw-600">{isTa ? 'உலாவிப் பகிர் பொத்தான்' : 'Open Sharing Menu'}</div>
+                  <div className="text-xs text-muted mt-2">{t('pwa_ios_step_1')}</div>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex gap-12" style={{ alignItems: 'flex-start' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 14, background: 'var(--surface-2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0
+                }}>2</div>
+                <div>
+                  <div className="fw-600">{isTa ? 'முகப்புத் திரையில் சேர்' : 'Add to Home Screen'}</div>
+                  <div className="text-xs text-muted mt-2">{t('pwa_ios_step_2')}</div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-12" style={{ alignItems: 'flex-start' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 14, background: 'var(--surface-2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0
+                }}>3</div>
+                <div>
+                  <div className="fw-600">{isTa ? 'நிறுவலை உறுதிசெய்' : 'Confirm Installation'}</div>
+                  <div className="text-xs text-muted mt-2">{t('pwa_ios_step_3')}</div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              className="btn btn-primary w-full mt-20" 
+              onClick={() => setShowIOSSheet(false)}
+              style={{ background: 'var(--gold)', color: '#000', fontWeight: 700 }}
+            >
+              {isTa ? 'சரி, புரிந்து கொண்டேன்' : 'Got it, thanks'}
             </button>
           </div>
         </div>
