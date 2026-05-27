@@ -404,7 +404,7 @@ export function CoverPrint() {
         @media print {
           @page {
             margin: 0;
-            size: ${settings.mode === 'envelope' ? '162mm 114mm' : 'A4'};
+            size: ${settings.mode === 'envelope' ? '162mm 114mm landscape' : 'A4 portrait'};
           }
           
           body { 
@@ -455,7 +455,7 @@ export function CoverPrint() {
           .grid-3x5 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); }
 
           .mode-labels .print-card {
-            border: none;
+            border: 0.3mm dashed #bbb;
             page-break-inside: avoid;
             display: flex;
             flex-direction: column;
