@@ -133,7 +133,6 @@ export function CoverPrint() {
     const lines = [
       devotee.name,
       devotee.address,
-      devotee.city ? `${devotee.city}${devotee.pincode ? ' - ' + devotee.pincode : ''}` : '',
       devotee.phone ? `PH: ${devotee.country_code || '+91'}${devotee.phone}` : ''
     ].filter(Boolean);
     const maxLineLength = Math.max(...lines.map(l => l.length), 1);
@@ -268,12 +267,6 @@ export function CoverPrint() {
                   <div className="sp-address">
                     <div className="sp-to-name">{toPostalCase(devotee.name)}</div>
                     <div className="sp-to-addr">{toPostalCase(devotee.address)}</div>
-                    {(devotee.city || devotee.pincode) && (
-                      <div className="sp-to-city">
-                        {toPostalCase(devotee.city)}
-                        {devotee.pincode ? <> - <span className="sp-to-pin">{devotee.pincode}</span></> : null}
-                      </div>
-                    )}
                     {devotee.phone && (
                       <div className="sp-to-phone">PH: {devotee.country_code || '+91'}{devotee.phone}</div>
                     )}
@@ -464,7 +457,7 @@ export function CoverPrint() {
           .grid-3x5 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, 1fr); }
 
           .mode-labels .print-card {
-            border: 0.1mm dashed #ccc;
+            border: none;
             page-break-inside: avoid;
             display: flex;
             flex-direction: column;
