@@ -314,10 +314,10 @@ export function CoverPrint() {
               key={devotee.id} 
               className={`print-card ${settings.isSpeedPost ? 'speedpost-card' : ''}`}
               style={{
-                paddingTop: `${settings.marginTop}mm`,
-                paddingBottom: `${settings.marginBottom}mm`,
-                paddingLeft: `${settings.marginLeft}mm`,
-                paddingRight: `${settings.marginRight}mm`,
+                paddingTop: settings.isSpeedPost ? '0' : `${settings.marginTop}mm`,
+                paddingBottom: settings.isSpeedPost ? '0' : `${settings.marginBottom}mm`,
+                paddingLeft: settings.isSpeedPost ? '0' : `${settings.marginLeft}mm`,
+                paddingRight: settings.isSpeedPost ? '0' : `${settings.marginRight}mm`,
                 color: settings.textColor,
                 fontWeight: settings.isBold ? 700 : 400,
                 fontSize: getAutoFontSize(devotee),
@@ -607,15 +607,19 @@ export function CoverPrint() {
             padding: 0 !important;
           }
 
-          /* Envelope Mode - C6 */
+          /* Envelope Mode - C6: strict 162mm × 114mm, NO bleed */
           .mode-envelope .print-card {
-            width: 162mm;
-            height: 114mm;
+            width: 162mm !important;
+            height: 114mm !important;
+            max-width: 162mm !important;
+            max-height: 114mm !important;
             page-break-after: always;
+            break-after: page;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            box-sizing: border-box;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
             position: relative;
           }
 
@@ -642,21 +646,33 @@ export function CoverPrint() {
             overflow: hidden;
           }
           
+          /* Speedpost card: fills the full C6 card with NO extra padding */
           .speedpost-card {
-            height: 100%;
-            padding: 3.5mm;
+            width: 162mm !important;
+            height: 114mm !important;
+            max-width: 162mm !important;
+            max-height: 114mm !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
           }
-          
+
+          /* Speedpost inner grid: must fill 100% of its card */
           .speedpost-grid {
-            border: 0.3mm solid #000;
+            width: 100% !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            border: 0.5mm solid #000 !important;
+            display: grid !important;
           }
-          
+
           .speedpost-header {
             background-color: #000 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          
+
           .to-pin {
             background-color: #000 !important;
             color: #fff !important;
