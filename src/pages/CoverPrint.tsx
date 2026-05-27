@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useDevoteeStore, useCategoryStore, useSettingsStore } from '../store';
 import { useTranslation } from '../utils/i18n';
 import type { Devotee } from '../db';
@@ -20,53 +19,8 @@ interface PrintSettings {
   isSpeedPost: boolean;
 }
 
-// ── Code 39 Barcode Generator (UPU / India Post Compliant) ──
-const CODE39_PATTERNS: Record<string, string> = {
-  '0': '000110100', '1': '100100001', '2': '001100001', '3': '101100000',
-  '4': '000110001', '5': '100110000', '6': '001110000', '7': '000100101',
-  '8': '100100100', '9': '001100100', 'A': '100001001', 'B': '001001001',
-  'C': '101001000', 'D': '000011001', 'E': '100011000', 'F': '001011000',
-  'G': '000001101', 'H': '100001100', 'I': '001001100', 'J': '000011100',
-  'K': '100000011', 'L': '001000011', 'M': '101000010', 'N': '000010011',
-  'O': '100010010', 'P': '001010010', 'Q': '000000111', 'R': '100000110',
-  'S': '001000110', 'T': '000010110', 'U': '110000001', 'V': '011000001',
-  'W': '111000000', 'X': '010010001', 'Y': '110010000', 'Z': '011010000',
-  '-': '010000101', '.': '110000100', ' ': '011000100', '*': '010010100',
-  '$': '010101000', '/': '010100010', '+': '010001010', '%': '000101010'
-};
-
-function getCode39SVG(text: string, height = 28): string {
-  const cleanText = `*${text.toUpperCase()}*`;
-  const narrowWidth = 1.0;
-  const wideWidth = 2.5;
-  const interGap = 0.8;
-  
-  let currentX = 0;
-  const bars: { x: number; width: number }[] = [];
-  
-  for (let c = 0; c < cleanText.length; c++) {
-    const char = cleanText[c];
-    const pattern = CODE39_PATTERNS[char] || CODE39_PATTERNS[' '];
-    
-    for (let i = 0; i < 9; i++) {
-      const isBar = (i % 2 === 0);
-      const isWide = pattern[i] === '1';
-      const width = isWide ? wideWidth : narrowWidth;
-      
-      if (isBar) {
-        bars.push({ x: currentX, width });
-      }
-      currentX += width;
-    }
-    currentX += interGap;
-  }
-  
-  const pathD = bars.map(b => `M ${b.x} 0 L ${b.x} ${height} L ${b.x + b.width} ${height} L ${b.x + b.width} 0 Z`).join(' ');
-  return `<svg width="100%" height="${height}" viewBox="0 0 ${currentX} ${height}" preserveAspectRatio="none" style="display:block;"><path d="${pathD}" fill="black" /></svg>`;
-}
 
 export function CoverPrint() {
-  const navigate = useNavigate();
   const { devotees } = useDevoteeStore();
   const { categories } = useCategoryStore();
   const { templeAddress } = useSettingsStore();
@@ -100,24 +54,6 @@ export function CoverPrint() {
 
   const toPostalCase = (str: string = '') => {
     return str.toUpperCase();
-  };
-
-  // UPU S10 Consignment Code Generator
-  const getMockTrackingNumber = (index: number) => {
-    const baseNum = 10000000 + index;
-    const digits = String(baseNum).split('').map(Number);
-    const weights = [8, 6, 4, 2, 3, 5, 9, 7];
-    let sum = 0;
-    for (let i = 0; i < 8; i++) {
-      sum += digits[i] * weights[i];
-    }
-    const remainder = sum % 11;
-    let checkDigit = 0;
-    if (remainder === 0) checkDigit = 5;
-    else if (remainder === 1) checkDigit = 0;
-    else checkDigit = 11 - remainder;
-
-    return `SP${baseNum}${checkDigit}IN`;
   };
 
   // QR Payload: embeds FROM (temple) + TO (devotee) for postal scanning
