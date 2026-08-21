@@ -182,10 +182,8 @@ end`};t.events.push([`putFont`,function(t){(function(t){var n=t.font,i=t.out,a=t
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .no-print, .bottom-nav, .page-header { display: none !important; }
 
@@ -198,7 +196,6 @@ end`};t.events.push([`putFont`,function(t){(function(t){var n=t.font,i=t.out,a=t
           .page-content {
             padding: 0 !important;
             margin: 0 !important;
-            width: 100% !important;
           }
 
           .print-container {
@@ -206,38 +203,36 @@ end`};t.events.push([`putFont`,function(t){(function(t){var n=t.font,i=t.out,a=t
             background: none !important;
             padding: 0 !important;
             margin: 0 !important;
-            width: 100% !important;
           }
 
           /* Hide screen-only margin guides */
           .margin-guide, .margin-handle { display: none !important; }
 
-          /* ── Envelope Mode: restore full size for print ── */
+          /* ── Envelope Mode: restore full mm size, NO overflow clipping ── */
           .envelope-scale-wrapper {
             width: ${w.envelopeWidth}mm !important;
             height: ${w.envelopeHeight}mm !important;
+            /* position:relative so child absolute positioning works correctly */
             position: relative !important;
-            overflow: hidden !important;
+            /* NO overflow:hidden — address text must not be clipped */
+            overflow: visible !important;
             page-break-after: always;
             break-after: page;
             box-sizing: border-box !important;
+            display: block !important;
           }
           .envelope-scale-wrapper .print-card {
+            /* Remove the preview scale transform */
             transform: none !important;
             width: ${w.envelopeWidth}mm !important;
             height: ${w.envelopeHeight}mm !important;
-            max-width: none !important;
-            max-height: none !important;
-            position: absolute !important;
+            /* Keep as positioned container so absolute children anchor correctly */
+            position: relative !important;
             top: 0 !important;
             left: 0 !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
-          }
-          /* Ensure address block stays absolutely positioned during print */
-          .envelope-scale-wrapper .print-card > div[style*="position: absolute"],
-          .mode-labels .print-card > div[style*="position: absolute"] {
-            position: absolute !important;
+            /* NO overflow:hidden — must not clip address block */
+            overflow: visible !important;
           }
 
           /* ── Label Mode ── */
@@ -264,7 +259,7 @@ end`};t.events.push([`putFont`,function(t){(function(t){var n=t.font,i=t.out,a=t
             border: ${w.hideBorders?`none`:`0.3mm dashed #bbb`} !important;
             page-break-inside: avoid !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             position: relative !important;
           }
         }
